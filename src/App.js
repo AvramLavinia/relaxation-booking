@@ -1,74 +1,169 @@
-// Example usage in a React component:
-import React, { useState, useEffect } from 'react';
-import { fetchFacilities } from 'api/facilities';
-import { fetchActiveBookings, bookFacility } from 'api/bookings';
+import React, { useState, useEffect } from "react";
+import Facilities from "./components/Facilities";
+import { fetchActiveBookings } from "./api/bookings";
+import RegisterForm from "./auth/regist";
+import LoginForm from "./auth/login";
+import ResetPasswordForm from "./auth/form";
 
-function FacilityList() {
-  const [facilities, setFacilities] = useState([]);
-  const [active, setActive] = useState([]);
+function App() {
+  const [user, setUser] = useState(null);
+  const [showBookings, setShowBookings] = useState(false);
+  const [bookings, setBookings] = useState([]);
+  const [view, setView] = useState("login"); // "login" | "register" | "reset" | "main"
 
-  // Load facilities on mount
+  // Try to restore user from localStorage
   useEffect(() => {
-    fetchFacilities()
-      .then(setFacilities)
-      .catch(err => console.error(err));
+    const token = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
+    if (token && userStr) {
+      setUser(JSON.parse(userStr));
+      setView("main");
+    }
   }, []);
 
-  // Poll active bookings every 30 seconds
-  useEffect(() => {
-    const loadActive = () => {
-      fetchActiveBookings()
-        .then(setActive)
-        .catch(err => console.error(err));
-    };
-    loadActive();
-    const interval = setInterval(loadActive, 30000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const isOccupied = (slug) =>
-    active.some(b => b.facility_slug === slug);
-
-  const handleBook = (slug, duration) => {
-    bookFacility(slug, duration)
-      .then(() => {
-        // Refresh active bookings after a successful booking
-        return fetchActiveBookings();
-      })
-      .then(setActive)
-      .catch(err => alert(err.message));
+  const handleLogin = (userObj) => {
+    setUser(userObj);
+    localStorage.setItem("user", JSON.stringify(userObj));
+    setView("main");
   };
 
+  const handleLogout = () => {
+    setUser(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setView("login");
+  };
+
+  const handleShowBookings = async () => {
+    const active = await fetchActiveBookings();
+    setBookings(active);
+    setShowBookings(true);
+  };
+
+  // Auth views
+  if (view === "login") {
+    return (
+      <div style={{ maxWidth: 400, margin: "3rem auto" }}>
+        <LoginForm
+          onLogin={handleLogin}
+          onRegister={() => setView("register")}
+          onReset={() => setView("reset")}
+        />
+      </div>
+    );
+  }
+  if (view === "register") {
+    return (
+      <div style={{ maxWidth: 400, margin: "3rem auto" }}>
+        <RegisterForm onSuccess={() => setView("login")} />
+        <div style={{ marginTop: 16 }}>
+          <button onClick={() => setView("login")}>Back to Login</button>
+        </div>
+      </div>
+    );
+  }
+  if (view === "reset") {
+    return (
+      <div style={{ maxWidth: 400, margin: "3rem auto" }}>
+        <ResetPasswordForm />
+        <div style={{ marginTop: 16 }}>
+          <button onClick={() => setView("login")}>Back to Login</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Main app view (user is logged in)
   return (
-    <ul className="space-y-3">
-      {facilities.map(f => (
-        <li key={f.id} className="flex items-center justify-between bg-white p-3 rounded-lg shadow">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-gray-100 rounded-lg">
-              {/* Render icon based on f.icon, e.g.: */}
-              {f.icon === 'gamepad' ? <Gamepad size={24} /> : null}
-              {/* (import your lucide-react icons at top of this file) */}
-            </div>
-            <div>
-              <p className="font-medium">{f.name}</p>
-              <p className={`text-sm ${isOccupied(f.slug) ? 'text-red-600' : 'text-green-600'}`}>
-                {isOccupied(f.slug) ? 'Occupied' : 'Available'}
-              </p>
-            </div>
-          </div>
-          <div className="text-gray-700 font-medium">
-            {/* Show a “Book” button only if available */}
-            {!isOccupied(f.slug)
-              ? <button onClick={() => handleBook(f.slug, f.defaultDuration ?? 10)}>
-                  Book {f.defaultDuration ?? 10} min
-                </button>
-              : <span>{/* could show “10 min left” by calculating end_time − now */}</span>
-            }
-          </div>
-        </li>
-      ))}
-    </ul>
+    <div style={{
+      maxWidth: '600px',
+      margin: '20px auto',
+      padding: '20px',
+      borderRadius: '12px',
+      boxShadow: '0 0 8px rgba(0,0,0,0.1)',
+      fontFamily: 'sans-serif',
+      background: '#fff'
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <h2 style={{
+          textAlign: 'center',
+          marginBottom: '20px',
+          fontSize: '24px'
+        }}>
+          PingMeLater
+        </h2>
+        <div>
+          <span style={{ marginRight: 12 }}>{user?.email}</span>
+          <button onClick={handleLogout}>Logout</button>
+        </div>
+      </div>
+      <Facilities user={user} />
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        marginTop: '20px'
+      }}>
+        <button
+          style={{
+            flex: 1,
+            padding: '10px',
+            borderRadius: '6px',
+            border: '1px solid black',
+            backgroundColor: 'white',
+            cursor: 'pointer',
+            margin: '0 5px',
+            fontWeight: 'bold'
+          }}
+          onClick={handleShowBookings}
+        >
+          My Bookings
+        </button>
+        <button style={{
+          flex: 1,
+          padding: '10px',
+          borderRadius: '6px',
+          border: '1px solid black',
+          backgroundColor: 'white',
+          cursor: 'pointer',
+          margin: '0 5px',
+          fontWeight: 'bold'
+        }}>
+          Organize Tournament
+        </button>
+      </div>
+      {showBookings && (
+        <div
+          style={{
+            position: "fixed",
+            top: "30%",
+            left: "50%",
+            transform: "translate(-50%, -30%)",
+            background: "#fff",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            padding: "2rem",
+            zIndex: 1000,
+          }}
+        >
+          <h3>My Bookings</h3>
+          <ul>
+            {bookings.length === 0 ? (
+              <li>No active bookings.</li>
+            ) : (
+              bookings
+                .filter(b => b.user_email === user.email)
+                .map((b) => (
+                  <li key={b.id}>
+                    {b.facility_slug} booked by {b.user_email} from {b.start_time} to {b.end_time}
+                  </li>
+                ))
+            )}
+          </ul>
+          <button onClick={() => setShowBookings(false)}>Close</button>
+        </div>
+      )}
+    </div>
   );
 }
 
-export default FacilityList;
+export default App;
