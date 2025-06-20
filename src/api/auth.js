@@ -32,4 +32,3 @@ export async function logIn({ email, password }) {
   if (!resp.ok) throw new Error((await resp.json()).error || "Login failed");
   return resp.json();
 }
-

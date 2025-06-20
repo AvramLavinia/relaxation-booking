@@ -84,4 +84,3 @@ export default function BookingModal({ facility, onClose, user }) {
     </div>
   );
 }
-
