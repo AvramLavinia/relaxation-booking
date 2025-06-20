@@ -4,6 +4,7 @@ import { bookFacility } from "../api/bookings";
 export default function BookingModal({ facility, onClose, user }) {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [duration, setDuration] = useState(60); // default to 60 min
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -11,7 +12,7 @@ export default function BookingModal({ facility, onClose, user }) {
       await bookFacility({
         facilitySlug: facility.slug,
         start: `${date}T${time}`,
-        durationMin: 60,
+        durationMin: Number(duration),
       });
       alert(`Booked ${facility.name} for ${user.email} on ${date} at ${time}`);
       onClose();
@@ -68,6 +69,22 @@ export default function BookingModal({ facility, onClose, user }) {
               required
               style={{ marginLeft: "0.5rem" }}
             />
+          </label>
+        </div>
+        <div style={{ marginTop: "1rem" }}>
+          <label>
+            Duration:
+            <select
+              value={duration}
+              onChange={(e) => setDuration(e.target.value)}
+              style={{ marginLeft: "0.5rem" }}
+              required
+            >
+              <option value={20}>20 minutes</option>
+              <option value={30}>30 minutes</option>
+              <option value={40}>40 minutes</option>
+              <option value={60}>1 hour</option>
+            </select>
           </label>
         </div>
         <div style={{ marginTop: "1.5rem" }}>

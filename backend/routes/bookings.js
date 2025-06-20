@@ -19,10 +19,11 @@ const router = express.Router();
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const { facilitySlug, start, durationMin } = req.body;
-    if (!facilitySlug || !start || typeof durationMin !== 'number') {
+    const allowedDurations = [20, 30, 40, 60];
+    if (!facilitySlug || !start || typeof durationMin !== 'number' || !allowedDurations.includes(durationMin)) {
       return res
         .status(400)
-        .json({ error: 'Missing or invalid fields (facilitySlug, start, durationMin).' });
+        .json({ error: 'Missing or invalid fields (facilitySlug, start, durationMin). Allowed durations: 20, 30, 40, 60 minutes.' });
     }
 
     // 1) Look up facility
