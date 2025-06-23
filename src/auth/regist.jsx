@@ -13,7 +13,7 @@ export default function RegisterForm({ onSuccess, onLogin }) {
     e.preventDefault();
     setError("");
     if (password !== confirmPassword) {
-      setError("Parolele nu se potrivesc!");
+      setError("Passwords do not match!");
       return;
     }
     try {
@@ -31,10 +31,10 @@ export default function RegisterForm({ onSuccess, onLogin }) {
         <img src={logo} alt="Endava logo" style={styles.logo} />
         <h3 style={styles.slogan}>Create your space to relax & play!</h3>
         <form onSubmit={handleSubmit} style={styles.form}>
-          <h2 style={{ marginBottom: '1rem' }}>Înregistrare</h2>
+          <h2 style={styles.subtitle}>Register</h2>
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Email address"
             value={email}
             onChange={e => setEmail(e.target.value)}
             style={styles.input}
@@ -50,7 +50,7 @@ export default function RegisterForm({ onSuccess, onLogin }) {
           />
           <input
             type="password"
-            placeholder="Parolă"
+            placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             style={styles.input}
@@ -58,19 +58,23 @@ export default function RegisterForm({ onSuccess, onLogin }) {
           />
           <input
             type="password"
-            placeholder="Confirmă parola"
+            placeholder="Confirm password"
             value={confirmPassword}
             onChange={e => setConfirmPassword(e.target.value)}
             style={styles.input}
             required
           />
           {error && <div style={{ color: "red", marginBottom: "1rem" }}>{error}</div>}
-          <button type="submit" style={styles.button}>Înregistrează-te</button>
+          <button type="submit" style={styles.button}>Register</button>
         </form>
         <p style={styles.registerText}>
-          Ai deja cont?{" "}
-          <button type="button" style={styles.link} onClick={e => { e.preventDefault(); if (onLogin) onLogin(); }}>
-            Autentificare
+          Already have an account?{" "}
+          <button
+            type="button"
+            style={styles.link}
+            onClick={e => { e.preventDefault(); if (onLogin) onLogin(); }}
+          >
+            Login
           </button>
         </p>
       </div>
@@ -80,62 +84,63 @@ export default function RegisterForm({ onSuccess, onLogin }) {
 
 const styles = {
   container: {
-    background: '#f5f7fa',
-    height: '100vh',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+    background: "#f5f7fa",
+    height: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center"
   },
   card: {
-    background: '#fff',
-    padding: '2.5rem',
-    borderRadius: '10px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    textAlign: 'center',
-    width: '320px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+    background: "#fff",
+    padding: "2.5rem",
+    borderRadius: "10px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+    textAlign: "center",
+    width: "320px"
   },
   logo: {
-    width: '120px',
-    margin: '0 auto 1rem',
-    display: 'block',
+    width: "180px",           // Increased from 120px to 180px
+    margin: "0 auto 1.5rem",  // Slightly more space below
+    display: "block"
   },
   slogan: {
-    color: '#ff4c4c',
-    marginBottom: '1.5rem',
-    fontWeight: 'bold',
-    fontSize: '1rem',
+    color: "#ff4c4c",
+    marginBottom: "1.5rem",
+    fontWeight: "bold"
+  },
+  subtitle: {
+    marginBottom: "1rem"
   },
   form: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
+    display: "flex",
+    flexDirection: "column"
   },
   input: {
-    marginBottom: '1rem',
-    padding: '0.75rem',
-    fontSize: '1rem',
-    border: '1px solid #ccc',
-    borderRadius: '6px',
+    marginBottom: "1rem",
+    padding: "0.75rem",
+    fontSize: "1rem",
+    border: "1px solid #ccc",
+    borderRadius: "6px"
   },
   button: {
-    backgroundColor: '#ff4c4c',
-    color: '#fff',
-    border: 'none',
-    padding: '0.75rem',
-    fontSize: '1rem',
-    borderRadius: '6px',
-    cursor: 'pointer',
+    backgroundColor: "#ff4c4c",
+    color: "#fff",
+    border: "none",
+    padding: "0.75rem",
+    fontSize: "1rem",
+    borderRadius: "6px",
+    cursor: "pointer"
   },
   registerText: {
-    marginTop: '1rem',
-    fontSize: '0.9rem',
+    marginTop: "1rem",
+    fontSize: "0.9rem"
   },
   link: {
-    color: '#007bff',
-    textDecoration: 'none',
-    cursor: 'pointer',
-  },
+    color: "#007bff",
+    textDecoration: "none",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    font: "inherit"
+  }
 };

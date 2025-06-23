@@ -56,7 +56,7 @@ function AppRoutes({ user, setUser }) {
           />
         } />
         <Route path="/reset" element={
-          <ResetPasswordForm />
+          <ResetPasswordForm onLogin={() => navigate("/login")} />
         } />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
