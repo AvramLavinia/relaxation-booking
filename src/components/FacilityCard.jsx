@@ -4,16 +4,16 @@ import { iconMap } from "./iconMap";
 // Card background colors (corrected slug keys)
 const bgColorMap = {
   fussball: "#fed7d7",
-  chair: "#d1fae5",
-  "ping-pong": "#ffe0c7",  // updated slug without dashes
+  chair: "#dbeafe",
+  "ping-pong": "#d1fae5",  // updated slug without dashes
   ps5: "#ddd6fe",
 };
 
 // Button background colors
 const buttonColorMap = {
   fussball: "#fda4af",
-  chair: "#06b6d4",
-  "ping-pong": "#fb923c",  // updated slug without dashes
+  chair: "#3b82f6",
+  "ping-pong": "#06b6d4",  // updated slug without dashes
   ps5: "#7c3aed",
 };
 
