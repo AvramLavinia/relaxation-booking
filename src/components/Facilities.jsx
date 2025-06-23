@@ -20,13 +20,13 @@ export default function Facilities({ user }) {
         alignItems: "center",
         justifyContent: "center",
         fontFamily: "'Poppins', sans-serif",
-        backgroundColor: "#f3f4f6",
+        background: "linear-gradient(135deg, #c084fc, #f9a8d4, #fcd34d)",
       }}
     >
       <h2
         style={{
           fontSize: "1.8rem",
-          margin: "0 0 1rem 0",
+          margin: "0.5rem 0 1rem 0",  // ✅ adds space only above
           fontWeight: "600",
           color: "#1f2937",
         }}
@@ -43,6 +43,7 @@ export default function Facilities({ user }) {
           width: "100%",
           maxWidth: "500px",
           justifyItems: "center",
+          marginBottom: "0.9rem",
         }}
       >
         {facilities.map((facility) => (
