@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { BrowserRouter as Router, Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import Facilities from "./components/Facilities";
 import { fetchActiveBookings } from "./api/bookings";
@@ -9,9 +9,10 @@ import ResetPasswordForm from "./auth/form";
 function AppRoutes({ user, setUser }) {
   const [showBookings, setShowBookings] = useState(false);
   const [bookings, setBookings] = useState([]);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef(null);
   const navigate = useNavigate();
 
-  // Try to restore user from localStorage
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
@@ -20,9 +21,25 @@ function AppRoutes({ user, setUser }) {
     }
   }, [setUser]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const handleLogin = (userObj) => {
-    setUser(userObj);
-    localStorage.setItem("user", JSON.stringify(userObj));
+    const normalizedUser = {
+      ...userObj,
+      name: userObj.name || userObj.displayName || userObj.email?.split("@")[0],
+    };
+    setUser(normalizedUser);
+    localStorage.setItem("user", JSON.stringify(normalizedUser));
     navigate("/");
   };
 
@@ -37,6 +54,21 @@ function AppRoutes({ user, setUser }) {
     const active = await fetchActiveBookings();
     setBookings(active);
     setShowBookings(true);
+  };
+
+  const handleDarkModeToggle = () => {
+    document.body.classList.toggle("dark-mode");
+  };
+
+  const menuButtonStyle = {
+    width: "100%",
+    padding: "10px",
+    textAlign: "left",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "0.9rem",
+    borderBottom: "1px solid #eee"
   };
 
   if (!user) {
@@ -55,15 +87,12 @@ function AppRoutes({ user, setUser }) {
             onLogin={() => navigate("/login")}
           />
         } />
-        <Route path="/reset" element={
-          <ResetPasswordForm onLogin={() => navigate("/login")} />
-        } />
+        <Route path="/reset" element={<ResetPasswordForm />} />
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     );
   }
 
-  // Main app view (user is logged in)
   return (
     <Routes>
       <Route path="/" element={
@@ -76,20 +105,62 @@ function AppRoutes({ user, setUser }) {
           fontFamily: 'sans-serif',
           background: '#fff'
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          {/* Header */}
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "12px"
+          }}>
             <h2 style={{
-              textAlign: 'center',
-              marginBottom: '20px',
-              fontSize: '24px'
+              margin: 0,
+              marginBottom: "12px",
+              fontSize: "24px",
+              fontWeight: "600"
             }}>
               PingMeLater
             </h2>
-            <div>
-              <span style={{ marginRight: 12 }}>{user?.email}</span>
-              <button onClick={handleLogout}>Logout</button>
+            <div ref={menuRef} style={{ position: "relative" }}>
+              <span style={{ marginRight: 12 }}>{user?.email?.split("@endava.com")[0]}</span>
+              <button
+                onClick={() => setIsMenuOpen(prev => !prev)}
+                style={{
+                  fontSize: "1.25rem",
+                  padding: "0.4rem 0.8rem",
+                  backgroundColor: isMenuOpen ? "#f472b6" : "#facc15", // yellow default, pink when open
+                  color: "#000",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontWeight: "500",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.1)",
+                  cursor: "pointer",
+                  transition: "all 0.3s ease"
+                }}
+              >
+                ☰
+              </button>
+              {isMenuOpen && (
+                <div style={{
+                  position: "absolute",
+                  top: "2.5rem",
+                  right: 0,
+                  background: "#fff",
+                  border: "1px solid #ccc",
+                  borderRadius: "6px",
+                  boxShadow: "0 2px 8px rgba(0, 0, 0, 0.1)",
+                  zIndex: 999,
+                  minWidth: "180px"
+                }}>
+                  <button onClick={handleDarkModeToggle} style={menuButtonStyle}>Toggle Dark Mode</button>
+                  <button style={menuButtonStyle}>Change Email</button>
+                  <button onClick={handleLogout} style={{ ...menuButtonStyle, color: "red" }}>Logout</button>
+                </div>
+              )}
             </div>
           </div>
+
           <Facilities user={user} />
+
           <div style={{
             display: 'flex',
             justifyContent: 'space-between',
@@ -123,6 +194,7 @@ function AppRoutes({ user, setUser }) {
               Organize Tournament
             </button>
           </div>
+
           {showBookings && (
             <div
               style={{

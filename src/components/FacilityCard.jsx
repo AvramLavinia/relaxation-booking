@@ -38,35 +38,47 @@ export default function FacilityCard({ facility, onBook }) {
   return (
     <div
       style={{
-        borderRadius: "12px",
-        padding: "1rem",
+        borderRadius: "16px",
+        padding: "1.2rem",
         textAlign: "center",
-        width: "180px",
-        height: "180px",
+        width: "200px",
+        height: "200px",
         backgroundColor: cardBg,
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
         alignItems: "center",
-        boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
-        fontFamily: "'Poppins', sans-serif",
+        boxShadow: "0 4px 16px rgba(0, 0, 0, 0.10)",
+        fontFamily: "'Poppins', 'Segoe UI', Arial, sans-serif",
+        transition: "box-shadow 0.2s",
       }}
     >
-      <div style={{ fontSize: "36px", color: "#1f2937" }}>{Icon && <Icon />}</div>
-      <div style={{ fontWeight: "600", fontSize: "1rem", color: "#1f2937" }}>
+      <div style={{ fontSize: "56px", color: "#1f2937", marginBottom: "0.5rem" }}>
+        {Icon && <Icon />}
+      </div>
+      <div style={{
+        fontWeight: 700,
+        fontSize: "1.25rem",
+        color: "#1f2937",
+        letterSpacing: "0.5px",
+        marginBottom: "0.5rem",
+        fontFamily: "'Poppins', 'Segoe UI', Arial, sans-serif"
+      }}>
         {facility.name}
       </div>
       <button
         onClick={onBook}
         style={{
-          padding: "0.4rem 0.8rem",
-          fontSize: "0.8rem",
-          borderRadius: "5px",
+          padding: "0.6rem 1.2rem",
+          fontSize: "1rem",
+          borderRadius: "8px",
           backgroundColor: buttonBg,
           color: "#fff",
           border: "none",
           cursor: "pointer",
-          fontWeight: "500",
+          fontWeight: 600,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+          transition: "background 0.2s, box-shadow 0.2s",
         }}
       >
         Book
@@ -74,4 +86,3 @@ export default function FacilityCard({ facility, onBook }) {
     </div>
   );
 }
- 
