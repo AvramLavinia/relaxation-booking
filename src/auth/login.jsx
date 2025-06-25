@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { logIn } from "../api/auth";
-import logo from "../assets/endava_logo.png"; // Make sure this image exists
+import logo from "../assets/endava_logo.png"; // Use your actual logo
 
 export default function LoginForm({ onLogin, onRegister, onReset }) {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState(""); // use 'password' for consistency
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
@@ -25,10 +25,10 @@ export default function LoginForm({ onLogin, onRegister, onReset }) {
         <img src={logo} alt="Endava logo" style={styles.logo} />
         <h3 style={styles.slogan}>Game on. Stress off.</h3>
         <form onSubmit={handleSubmit} style={styles.form}>
-          <h2 style={{ marginBottom: '1rem' }}>Autentificare</h2>
+          <h2 style={styles.subtitle}>Login</h2>
           <input
             type="email"
-            placeholder="Email"
+            placeholder="Email address"
             value={email}
             onChange={e => setEmail(e.target.value)}
             style={styles.input}
@@ -36,7 +36,7 @@ export default function LoginForm({ onLogin, onRegister, onReset }) {
           />
           <input
             type="password"
-            placeholder="Parolă"
+            placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
             style={styles.input}
@@ -46,14 +46,22 @@ export default function LoginForm({ onLogin, onRegister, onReset }) {
           <button type="submit" style={styles.button}>Login</button>
         </form>
         <p style={styles.registerText}>
-          Nu ai cont?{" "}
-          <a href="#" style={styles.link} onClick={e => { e.preventDefault(); if (onRegister) onRegister(); }}>
-            Înregistrează-te
-          </a>
+          Don’t have an account?{" "}
+          <button
+            type="button"
+            style={styles.link}
+            onClick={e => { e.preventDefault(); if (onRegister) onRegister(); }}
+          >
+            Register
+          </button>
         </p>
         <p style={styles.registerText}>
-          <button type="button" style={styles.link} onClick={e => { e.preventDefault(); if (onReset) onReset(); }}>
-            Ai uitat parola?
+          <button
+            type="button"
+            style={styles.link}
+            onClick={e => { e.preventDefault(); if (onReset) onReset(); }}
+          >
+            Forgot password?
           </button>
         </p>
       </div>
@@ -63,62 +71,63 @@ export default function LoginForm({ onLogin, onRegister, onReset }) {
 
 const styles = {
   container: {
-    background: '#f5f7fa',
-    height: '100vh',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+    background: "#f5f7fa",
+    height: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center"
   },
   card: {
-    background: '#fff',
-    padding: '2.5rem',
-    borderRadius: '10px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-    textAlign: 'center',
-    width: '320px',
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
+    background: "#fff",
+    padding: "2.5rem",
+    borderRadius: "10px",
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+    textAlign: "center",
+    width: "320px"
   },
   logo: {
-    width: '120px',
-    margin: '0 auto 1rem',
-    display: 'block',
+    width: "180px",           // Match the register page size
+    margin: "0 auto 1.5rem",  // Slightly more space below
+    display: "block"
   },
   slogan: {
-    color: '#ff4c4c',
-    marginBottom: '1.5rem',
-    fontWeight: 'bold',
-    fontSize: '1rem',
+    color: "#ff4c4c",
+    marginBottom: "1.5rem",
+    fontWeight: "bold"
+  },
+  subtitle: {
+    marginBottom: "1rem"
   },
   form: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'column',
+    display: "flex",
+    flexDirection: "column"
   },
   input: {
-    marginBottom: '1rem',
-    padding: '0.75rem',
-    fontSize: '1rem',
-    border: '1px solid #ccc',
-    borderRadius: '6px',
+    marginBottom: "1rem",
+    padding: "0.75rem",
+    fontSize: "1rem",
+    border: "1px solid #ccc",
+    borderRadius: "6px"
   },
   button: {
-    backgroundColor: '#ff4c4c',
-    color: '#fff',
-    border: 'none',
-    padding: '0.75rem',
-    fontSize: '1rem',
-    borderRadius: '6px',
-    cursor: 'pointer',
+    backgroundColor: "#ff4c4c",
+    color: "#fff",
+    border: "none",
+    padding: "0.75rem",
+    fontSize: "1rem",
+    borderRadius: "6px",
+    cursor: "pointer"
   },
   registerText: {
-    marginTop: '1rem',
-    fontSize: '0.9rem',
+    marginTop: "1rem",
+    fontSize: "0.9rem"
   },
   link: {
-    color: '#007bff',
-    textDecoration: 'none',
-    cursor: 'pointer',
-  },
+    color: "#007bff",
+    textDecoration: "none",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    font: "inherit"
+  }
 };

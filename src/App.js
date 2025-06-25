@@ -199,31 +199,118 @@ function AppRoutes({ user, setUser }) {
             <div
               style={{
                 position: "fixed",
-                top: "30%",
-                left: "50%",
-                transform: "translate(-50%, -30%)",
-                background: "#fff",
-                border: "1px solid #ccc",
-                borderRadius: "8px",
-                padding: "2rem",
+                top: 0,
+                left: 0,
+                width: "100vw",
+                height: "100vh",
+                background: "rgba(0,0,0,0.12)",
                 zIndex: 1000,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
               }}
+              onClick={() => setShowBookings(false)} // <-- close on overlay click
             >
-              <h3>My Bookings</h3>
-              <ul>
-                {bookings.length === 0 ? (
-                  <li>No active bookings.</li>
+              <div
+                style={{
+                  background: "#fff",
+                  borderRadius: "32px",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.10)",
+                  padding: "2.5rem 2rem 2rem 2rem",
+                  minWidth: "370px",
+                  maxWidth: "90vw",
+                  maxHeight: "80vh", // <-- limit height
+                  overflowY: "auto", // <-- make scrollable
+                  textAlign: "center",
+                  position: "relative"
+                }}
+                onClick={e => e.stopPropagation()} // <-- prevent closing when clicking inside modal
+              >
+                <h2 style={{
+                  fontSize: "2.5rem",
+                  fontWeight: 700,
+                  margin: "0 0 2rem 0",
+                  letterSpacing: "-1px"
+                }}>My Bookings</h2>
+                {bookings.filter(b => b.user_email === user.email).length === 0 ? (
+                  <div style={{ color: "#888", fontSize: "1.1rem", marginBottom: "2rem" }}>No active bookings.</div>
                 ) : (
                   bookings
                     .filter(b => b.user_email === user.email)
-                    .map((b) => (
-                      <li key={b.id}>
-                        {b.facility_slug} booked by {b.user_email} from {b.start_time} to {b.end_time}
-                      </li>
-                    ))
+                    .map((b) => {
+                      const start = new Date(b.start_time);
+                      const end = new Date(b.end_time);
+
+                      // Icon for facility
+                      let icon = null;
+                      if (b.facility_slug === "ping-pong") icon = "🏓";
+                      else if (b.facility_slug === "fussball") icon = "👥";
+                      else if (b.facility_slug === "ps5") icon = "🎮";
+                      else if (b.facility_slug === "chair") icon = "💺";
+
+                      // Pretty name
+                      const prettyName = b.facility_slug
+                        .replace("-", " ")
+                        .replace(/\b\w/g, l => l.toUpperCase());
+
+                      return (
+                        <div
+                          key={b.id}
+                          style={{
+                            background: "#fff",
+                            border: "1.5px solid #eee",
+                            borderRadius: "24px",
+                            boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+                            padding: "1.5rem 1.5rem 1.2rem 1.5rem",
+                            margin: "0 auto 2rem auto",
+                            maxWidth: 420,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "1.2rem"
+                          }}
+                        >
+                          <div style={{
+                            borderLeft: "6px solid #ffa23a",
+                            borderRadius: "8px",
+                            height: "70px",
+                            marginRight: "1.2rem"
+                          }} />
+                          <div style={{ flex: 1, textAlign: "left" }}>
+                            <div style={{ display: "flex", alignItems: "center", marginBottom: "0.5rem" }}>
+                              <span style={{ fontSize: "2rem", marginRight: "0.7rem" }}>{icon}</span>
+                              <span style={{ fontWeight: 700, fontSize: "1.6rem" }}>{prettyName}</span>
+                            </div>
+                            <div style={{ fontSize: "1.15rem", marginBottom: "0.2rem" }}>
+                              {`${start.getDate().toString().padStart(2, "0")}/${(start.getMonth()+1).toString().padStart(2, "0")}/${start.getFullYear()}`}
+                            </div>
+                            <div style={{ fontSize: "1.15rem", letterSpacing: "1px" }}>
+                              {start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })} &mdash; {end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
                 )}
-              </ul>
-              <button onClick={() => setShowBookings(false)}>Close</button>
+                <button
+                  onClick={() => setShowBookings(false)}
+                  style={{
+                    marginTop: "0.5rem",
+                    padding: "1rem 0",
+                    width: "70%",
+                    background: "#ffa23a",
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: "1.5rem",
+                    border: "none",
+                    borderRadius: "18px",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 8px rgba(255,162,58,0.10)",
+                    transition: "background 0.2s"
+                  }}
+                >
+                  Close
+                </button>
+              </div>
             </div>
           )}
         </div>

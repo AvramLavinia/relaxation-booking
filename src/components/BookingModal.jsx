@@ -1,19 +1,20 @@
 import React, { useState } from "react";
 import { bookFacility } from "../api/bookings";
-
+import Select from "react-select";
+ 
 export default function BookingModal({ facility, onClose, user }) {
   const [date, setDate] = useState("");
   const [hour, setHour] = useState(() => String(new Date().getHours()).padStart(2, "0"));
   const [minute, setMinute] = useState(() => String(new Date().getMinutes()).padStart(2, "0"));
   const [duration, setDuration] = useState(60);
-
+ 
   const now = new Date();
   const todayStr = now.toISOString().split("T")[0];
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
-
+ 
   const isToday = date === todayStr;
-
+ 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const startDateTime = new Date(`${date}T${hour}:${minute}`);
@@ -33,10 +34,17 @@ export default function BookingModal({ facility, onClose, user }) {
       alert("Booking failed!");
     }
   };
-
-  const hours = Array.from({ length: 15 }, (_, i) => String(i + 8).padStart(2, "0")).filter(h => !isToday || Number(h) > currentHour || (Number(h) === currentHour && currentMinute < 59));
-  const minutes = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, "0")).filter(m => !isToday || Number(hour) > currentHour || (Number(hour) === currentHour && Number(m) > currentMinute));
-
+ 
+  const hourOptions = Array.from({ length: 15 }, (_, i) => ({
+    value: String(i + 8).padStart(2, "0"),
+    label: String(i + 8).padStart(2, "0"),
+  }));
+ 
+  const minuteOptions = Array.from({ length: 60 }, (_, i) => ({
+    value: String(i).padStart(2, "0"),
+    label: String(i).padStart(2, "0"),
+  })).filter(opt => !isToday || Number(hour) > currentHour || (Number(hour) === currentHour && Number(opt.value) > currentMinute));
+ 
   return (
     <div style={{
       position: "fixed",
@@ -86,46 +94,88 @@ export default function BookingModal({ facility, onClose, user }) {
     border: "1px solid #d1d5db",
   }}
 />
-
+ 
           </div>
           <div>
             <label>Time:</label>
             <div style={{ display: "flex", gap: "1rem" }}>
-              <select
-                value={hour}
-                onChange={(e) => setHour(e.target.value)}
-                required
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  borderRadius: "4px",
-                  border: "1px solid #d1d5db",
-                  maxHeight: "12rem",
-                  overflowY: "auto"
-                }}
-              >
-                {hours.map(h => (
-                  <option key={h} value={h}>{h}</option>
-                ))}
-              </select>
-              <select
-                value={minute}
-                onChange={(e) => setMinute(e.target.value)}
-                required
-                style={{
-                  flex: 1,
-                  padding: "0.5rem",
-                  borderRadius: "4px",
-                  border: "1px solid #d1d5db",
-                  maxHeight: "12rem",
-                  overflowY: "auto"
-                }}
-              >
-                {minutes.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
-              </select>
-            </div>
+  <div style={{ flex: 1, minWidth: 0, width: 100 }}>
+    <Select
+      value={hourOptions.find(opt => opt.value === hour)}
+      onChange={opt => setHour(opt.value)}
+      options={hourOptions}
+      menuPlacement="auto"
+      menuPosition="fixed"
+      styles={{
+        menu: (provided, state) => ({
+          ...provided,
+          maxHeight: 180,
+          width: state.selectProps.menuWidth || state.selectProps.controlWidth || provided.width,
+          minWidth: 0,
+          zIndex: 9999,
+          fontSize: "1rem"
+        }),
+        control: provided => ({
+          ...provided,
+          minHeight: "38px",
+          fontSize: "1rem"
+        }),
+        container: provided => ({
+          ...provided,
+          flex: 1,
+          minWidth: 0
+        }),
+        option: provided => ({
+          ...provided,
+          fontSize: "1rem",
+          padding: "8px 12px"
+        }),
+        menu: provided => ({
+          ...provided,
+          width: 100, // match container width
+        }),
+      }}
+    />
+  </div>
+  <div style={{ flex: 1, minWidth: 0, width: 100 }}>
+    <Select
+      value={minuteOptions.find(opt => opt.value === minute)}
+      onChange={opt => setMinute(opt.value)}
+      options={minuteOptions}
+      menuPlacement="auto"
+      menuPosition="fixed"
+      styles={{
+        menu: (provided, state) => ({
+          ...provided,
+          maxHeight: 180,
+          width: state.selectProps.menuWidth || state.selectProps.controlWidth || provided.width,
+          minWidth: 0,
+          zIndex: 9999,
+          fontSize: "1rem"
+        }),
+        control: provided => ({
+          ...provided,
+          minHeight: "38px",
+          fontSize: "1rem"
+        }),
+        container: provided => ({
+          ...provided,
+          flex: 1,
+          minWidth: 0
+        }),
+        option: provided => ({
+          ...provided,
+          fontSize: "1rem",
+          padding: "8px 12px"
+        }),
+        menu: provided => ({
+          ...provided,
+          width: 100, // match container width
+        }),
+      }}
+    />
+  </div>
+</div>
           </div>
           <div>
             <label>Duration:</label>
@@ -154,3 +204,4 @@ export default function BookingModal({ facility, onClose, user }) {
     </div>
   );
 }
+ 
