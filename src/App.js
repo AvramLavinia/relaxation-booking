@@ -103,7 +103,7 @@ function AppRoutes({ user, setUser }) {
           borderRadius: '12px',
           boxShadow: '0 0 8px rgba(0,0,0,0.1)',
           fontFamily: 'sans-serif',
-          background: '#fff'
+          background: 'linear-gradient(135deg, #f3e7fa 0%, #f9fbe7 100%)' // <-- lively pastel gradient
         }}>
           {/* Header */}
           <div style={{
