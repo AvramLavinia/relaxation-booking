@@ -1,20 +1,20 @@
 import React, { useState } from "react";
 import { bookFacility } from "../api/bookings";
 import Select from "react-select";
-
+ 
 export default function BookingModal({ facility, onClose, user }) {
   const [date, setDate] = useState("");
   const [hour, setHour] = useState(() => String(new Date().getHours()).padStart(2, "0"));
   const [minute, setMinute] = useState(() => String(new Date().getMinutes()).padStart(2, "0"));
   const [duration, setDuration] = useState(60);
-
+ 
   const now = new Date();
   const todayStr = now.toISOString().split("T")[0];
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
-
+ 
   const isToday = date === todayStr;
-
+ 
   const handleSubmit = async (e) => {
     e.preventDefault();
     const startDateTime = new Date(`${date}T${hour}:${minute}`);
@@ -34,17 +34,17 @@ export default function BookingModal({ facility, onClose, user }) {
       alert("Booking failed!");
     }
   };
-
+ 
   const hourOptions = Array.from({ length: 15 }, (_, i) => ({
     value: String(i + 8).padStart(2, "0"),
     label: String(i + 8).padStart(2, "0"),
   }));
-
+ 
   const minuteOptions = Array.from({ length: 60 }, (_, i) => ({
     value: String(i).padStart(2, "0"),
     label: String(i).padStart(2, "0"),
   })).filter(opt => !isToday || Number(hour) > currentHour || (Number(hour) === currentHour && Number(opt.value) > currentMinute));
-
+ 
   return (
     <div style={{
       position: "fixed",
@@ -94,7 +94,7 @@ export default function BookingModal({ facility, onClose, user }) {
     border: "1px solid #d1d5db",
   }}
 />
-
+ 
           </div>
           <div>
             <label>Time:</label>
@@ -204,3 +204,4 @@ export default function BookingModal({ facility, onClose, user }) {
     </div>
   );
 }
+ 

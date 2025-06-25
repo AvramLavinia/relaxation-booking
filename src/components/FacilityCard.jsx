@@ -86,3 +86,4 @@ export default function FacilityCard({ facility, onBook }) {
     </div>
   );
 }
+ 
