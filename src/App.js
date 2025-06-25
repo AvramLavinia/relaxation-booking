@@ -5,6 +5,7 @@ import { fetchActiveBookings } from "./api/bookings";
 import RegisterForm from "./auth/regist";
 import LoginForm from "./auth/login";
 import ResetPasswordForm from "./auth/form";
+import logo from "./assets/endava_logo.png"; 
 
 function AppRoutes({ user, setUser }) {
   const [showBookings, setShowBookings] = useState(false);
