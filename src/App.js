@@ -6,14 +6,14 @@ import RegisterForm from "./auth/regist";
 import LoginForm from "./auth/login";
 import ResetPasswordForm from "./auth/form";
 import logo from "./assets/endava_logo.png"; // asigură-te că ai acest fișier
-
+ 
 function AppRoutes({ user, setUser }) {
   const [showBookings, setShowBookings] = useState(false);
   const [bookings, setBookings] = useState([]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef(null);
   const navigate = useNavigate();
-
+ 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
@@ -21,7 +21,7 @@ function AppRoutes({ user, setUser }) {
       setUser(JSON.parse(userStr));
     }
   }, [setUser]);
-
+ 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (menuRef.current && !menuRef.current.contains(event.target)) {
@@ -33,7 +33,7 @@ function AppRoutes({ user, setUser }) {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
+ 
   const handleLogin = (userObj) => {
     const normalizedUser = {
       ...userObj,
@@ -43,24 +43,24 @@ function AppRoutes({ user, setUser }) {
     localStorage.setItem("user", JSON.stringify(normalizedUser));
     navigate("/");
   };
-
+ 
   const handleLogout = () => {
     setUser(null);
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     navigate("/login");
   };
-
+ 
   const handleShowBookings = async () => {
     const active = await fetchActiveBookings();
     setBookings(active);
     setShowBookings(true);
   };
-
+ 
   const handleDarkModeToggle = () => {
     document.body.classList.toggle("dark-mode");
   };
-
+ 
   const menuButtonStyle = {
     width: "100%",
     padding: "10px",
@@ -71,7 +71,7 @@ function AppRoutes({ user, setUser }) {
     fontSize: "0.9rem",
     borderBottom: "1px solid #eee"
   };
-
+ 
   if (!user) {
     return (
       <Routes>
@@ -93,7 +93,7 @@ function AppRoutes({ user, setUser }) {
       </Routes>
     );
   }
-
+ 
   return (
     <>
       {/* LOGO stânga sus */}
@@ -107,7 +107,7 @@ function AppRoutes({ user, setUser }) {
       }}>
         <img src={logo} alt="Endava Logo" style={{ height: 60 }} />
       </div>
-
+ 
       {/* MENU dreapta sus */}
       <div
         ref={menuRef}
@@ -156,7 +156,7 @@ function AppRoutes({ user, setUser }) {
           </div>
         )}
       </div>
-
+ 
       {/* Caseta centrală */}
       <Routes>
         <Route path="/" element={
@@ -180,7 +180,7 @@ function AppRoutes({ user, setUser }) {
             </div>
             {/* restul codului tău */}
             <Facilities user={user} />
-
+ 
             <div style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -214,7 +214,7 @@ function AppRoutes({ user, setUser }) {
                 Organize Tournament
               </button>
             </div>
-
+ 
             {showBookings && (
               <div
                 style={{
@@ -260,19 +260,19 @@ function AppRoutes({ user, setUser }) {
                       .map((b) => {
                         const start = new Date(b.start_time);
                         const end = new Date(b.end_time);
-
+ 
                         // Icon for facility
                         let icon = null;
                         if (b.facility_slug === "ping-pong") icon = "🏓";
                         else if (b.facility_slug === "fussball") icon = "👥";
                         else if (b.facility_slug === "ps5") icon = "🎮";
                         else if (b.facility_slug === "chair") icon = "💺";
-
+ 
                         // Pretty name
                         const prettyName = b.facility_slug
                           .replace("-", " ")
                           .replace(/\b\w/g, l => l.toUpperCase());
-
+ 
                         return (
                           <div
                             key={b.id}
@@ -340,15 +340,15 @@ function AppRoutes({ user, setUser }) {
     </>
   );
 }
-
+ 
 function App() {
   const [user, setUser] = useState(null);
-
+ 
   return (
     <Router>
       <AppRoutes user={user} setUser={setUser} />
     </Router>
   );
 }
-
+ 
 export default App;
