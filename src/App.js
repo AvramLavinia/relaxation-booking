@@ -6,6 +6,7 @@ import RegisterForm from "./auth/regist";
 import LoginForm from "./auth/login";
 import ResetPasswordForm from "./auth/form";
 import logo from "./assets/endava_logo.png"; // asigură-te că ai acest fișier
+import TournamentsHome from "./components/TournamentsHome";
 
 function AppRoutes({ user, setUser }) {
   const [showBookings, setShowBookings] = useState(false);
@@ -210,7 +211,7 @@ function AppRoutes({ user, setUser }) {
                 cursor: 'pointer',
                 margin: '0 5px',
                 fontWeight: 'bold'
-              }}>
+              }} onClick={() => navigate("/tournaments")}>
                 Organize Tournament
               </button>
             </div>
@@ -335,6 +336,7 @@ function AppRoutes({ user, setUser }) {
             )}
           </div>
         } />
+        <Route path="/tournaments" element={<TournamentsHome />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </>
