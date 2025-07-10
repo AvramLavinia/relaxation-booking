@@ -7,6 +7,8 @@ dotenv.config();
 import authRoutes      from './routes/auth.js';
 import facilityRoutes  from './routes/facilities.js';
 import bookingRoutes   from './routes/bookings.js';
+import tournamentRoutes from './routes/tournaments.js';
+import userRoutes      from './routes/users.js';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -22,6 +24,8 @@ app.use(express.json()); // parse JSON bodies
 app.use('/api/auth', authRoutes);
 app.use('/api/facilities', facilityRoutes);
 app.use('/api/bookings', bookingRoutes);
+app.use('/api/tournaments', tournamentRoutes);
+app.use('/api/users', userRoutes);
 
 // 3) Health‐check endpoint
 app.get('/api/health', (req, res) => res.json({ status: 'OK' }));

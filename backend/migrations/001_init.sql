@@ -60,3 +60,5 @@ INSERT INTO facilities (slug, name, icon) VALUES
   ('ping-pong', 'Ping Pong Table',  'table-tennis'),
   ('fussball',  'Fussball',         'users'),
   ('chair',     'Massage Chair',    'chair');
+
+

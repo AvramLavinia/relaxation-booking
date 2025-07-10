@@ -1,48 +1,95 @@
 import React, { useState, useEffect } from "react";
 import Tournaments from "./Tournaments";
+import { API_URL } from "../api/auth";
 
-const TOURNAMENTS_KEY = "tournaments";
+async function updateTournamentOnBackend(id, update, token) {
+  const resp = await fetch(`${API_URL}/tournaments/${id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify(update)
+  });
+  if (!resp.ok) throw new Error("Failed to update tournament");
+  return resp.json();
+}
 
 const TournamentsHome = () => {
   const [view, setView] = useState("home");
-  const [tournaments, setTournaments] = useState(() => {
-    // Încearcă să încarci din localStorage
-    const saved = localStorage.getItem(TOURNAMENTS_KEY);
-    if (saved) return JSON.parse(saved);
-    // Dacă nu există, folosește valorile default
-    return [
-      {
-        name: "Ping Pong Spring Cup",
-        game: "Ping Pong",
-        players: 8,
-        type: "Championship"
-      },
-      {
-        name: "FIFA Knockout",
-        game: "FIFA (PS5)",
-        players: 4,
-        type: "Elimination"
-      }
-    ];
-  });
+  const [tournaments, setTournaments] = useState([]);
+  const [users, setUsers] = useState([]);
+  const [inviteMessage, setInviteMessage] = useState("");
+  const [manualStandings, setManualStandings] = useState({});
+  const token = localStorage.getItem("token");
+  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
 
-  // Salvează în localStorage la orice modificare
+  // Fetch tournaments from backend
   useEffect(() => {
-    localStorage.setItem(TOURNAMENTS_KEY, JSON.stringify(tournaments));
-  }, [tournaments]);
+    fetch(`${API_URL}/tournaments`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => setTournaments(data.tournaments || []));
+  }, [token, view]);
 
-  const handleAddTournament = (newTournament) => {
-    const matches = generateMatches(newTournament.invited, newTournament.type);
-    setTournaments((prev) => [
-      ...prev,
-      { ...newTournament, matches }
-    ]);
+  // Fetch users for ID->name mapping
+  useEffect(() => {
+    fetch(`${API_URL}/users`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => setUsers(data.users || []));
+  }, [token]);
+
+  // Helper: map user ID to display name/email
+  const getUserName = (id) => {
+    const user = users.find(u => u.id === id);
+    return user ? (user.display_name || user.email) : id;
+  };
+
+  // Add tournament via backend
+  const handleAddTournament = async (newTournament) => {
+    const resp = await fetch(`${API_URL}/tournaments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify(newTournament)
+    });
+    if (!resp.ok) {
+      alert("Failed to create tournament");
+      return;
+    }
+    const data = await resp.json();
+    setTournaments(prev => [...prev, data.tournament]);
+    setInviteMessage("Your invitations are sent!");
     setView("list");
   };
 
-  const handleDeleteTournament = (index) => {
-    setTournaments(prev => prev.filter((_, i) => i !== index));
+  // Delete tournament via backend
+  const handleDeleteTournament = async (id) => {
+    await fetch(`${API_URL}/tournaments/${id}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    setTournaments(prev => prev.filter(t => t.id !== id));
   };
+
+  useEffect(() => {
+    if (view && typeof view === "object" && view.type === "manage") {
+      const t = tournaments.find(t => t.id === view.id);
+      if (t) {
+        if (t.standings) setManualStandings({ ...t.standings });
+        else {
+          const obj = {};
+          ([t.created_by, ...(t.invited || [])]).forEach(id => obj[id] = 0);
+          setManualStandings(obj);
+        }
+      }
+    }
+  }, [view, tournaments]);
 
   if (view === "create") {
     return (
@@ -57,8 +104,8 @@ const TournamentsHome = () => {
     return (
       <div style={styles.card}>
         <h2>Existing Tournaments</h2>
-        {tournaments.map((t, index) => (
-          <div key={index} style={styles.item}>
+        {tournaments.map((t) => (
+          <div key={t.id} style={styles.item}>
             <strong>{t.name}</strong> <br />
             Game: {t.game} <br />
             Players: {t.players} <br />
@@ -73,26 +120,41 @@ const TournamentsHome = () => {
                 padding: "0.3rem 0.7rem",
                 cursor: "pointer"
               }}
-              onClick={() => setView({ type: "manage", index })}
+              onClick={() => setView({ type: "manage", id: t.id })}
             >
               Manage
             </button>
-            <button
-              style={{
-                marginLeft: "1rem",
-                background: "#ff4c4c",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                padding: "0.3rem 0.7rem",
-                cursor: "pointer"
-              }}
-              onClick={() => handleDeleteTournament(index)}
-            >
-              Delete
-            </button>
+            {t.created_by === currentUser.id && (
+              <button
+                style={{
+                  marginLeft: "1rem",
+                  background: "#ff4c4c",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  padding: "0.3rem 0.7rem",
+                  cursor: "pointer"
+                }}
+                onClick={() => handleDeleteTournament(t.id)}
+              >
+                Delete
+              </button>
+            )}
           </div>
         ))}
+        {inviteMessage && (
+          <div style={{
+            background: "#d1fae5",
+            color: "#065f46",
+            padding: "1rem",
+            borderRadius: "8px",
+            margin: "1rem 0",
+            textAlign: "center",
+            fontWeight: "bold"
+          }}>
+            {inviteMessage}
+          </div>
+        )}
         <button onClick={() => setView("home")} style={styles.backButton}>
           Back
         </button>
@@ -101,25 +163,29 @@ const TournamentsHome = () => {
   }
 
   if (typeof view === "object" && view.type === "manage") {
-    const t = tournaments[view.index];
+    const t = tournaments.find(t => t.id === view.id);
+    const invited = Array.isArray(t.invited)
+      ? t.invited
+      : (typeof t.invited === "string" ? JSON.parse(t.invited) : []);
+    const matches = Array.isArray(t.matches)
+      ? t.matches
+      : (typeof t.matches === "string" ? JSON.parse(t.matches) : []);
 
-    // Standings doar pentru Championship
-    let standings = {};
-    if (t.type === "Championship") {
-      (t.invited || []).forEach(name => standings[name] = 0);
-      (t.matches || []).flat().forEach(m => {
-        if (m.score1 != null && m.score2 != null) {
-          if (m.score1 > m.score2) standings[m.player1] += 3;
-          else if (m.score1 < m.score2) standings[m.player2] += 3;
-          else { standings[m.player1] += 1; standings[m.player2] += 1; }
-        }
-      });
-    }
+    // Save manual points to backend
+    const handleSavePoints = async () => {
+      try {
+        const data = await updateTournamentOnBackend(t.id, { standings: manualStandings }, token);
+        setTournaments(ts => ts.map(tt => tt.id === t.id ? data.tournament : tt));
+        alert("Points saved!");
+      } catch (err) {
+        alert("Failed to save points");
+      }
+    };
 
-    // Câștigător pentru Elimination
+    // Winner for Elimination
     let winner = null;
-    if (t.type === "Elimination" && t.matches && t.matches.length > 0) {
-      const lastRound = t.matches[t.matches.length - 1];
+    if (t.type === "Elimination" && matches && matches.length > 0) {
+      const lastRound = matches[matches.length - 1];
       if (lastRound.length === 1) {
         const m = lastRound[0];
         if (m.score1 != null && m.score2 != null) {
@@ -129,28 +195,88 @@ const TournamentsHome = () => {
       }
     }
 
+    // Make this function async!
+    const handleScoreChange = async (roundIdx, matchIdx, field, value) => {
+      const updatedMatches = matches.map((round, rIdx) =>
+        rIdx === roundIdx
+          ? round.map((match, mIdx) =>
+              mIdx === matchIdx
+                ? { ...match, [field]: value }
+                : match
+            )
+          : round
+      );
+      // Persist to backend
+      try {
+        const data = await updateTournamentOnBackend(t.id, { matches: updatedMatches }, token);
+        setTournaments(ts => ts.map(tt => tt.id === t.id ? data.tournament : tt));
+      } catch (err) {
+        alert("Failed to update score");
+      }
+    };
+
+    // Also use matches (not t.matches) here!
+    const handleAdvanceWinners = async (roundIdx) => {
+      const updatedMatches = JSON.parse(JSON.stringify(matches));
+      const round = updatedMatches[roundIdx];
+      const winners = round
+        .map(m => {
+          if (m.score1 == null || m.score2 == null) return null;
+          if (m.score1 > m.score2) return m.player1;
+          if (m.score2 > m.score1) return m.player2;
+          return null;
+        })
+        .filter(Boolean);
+      for (let i = 0; i < winners.length; i += 2) {
+        updatedMatches[roundIdx + 1][i / 2].player1 = winners[i] || null;
+        updatedMatches[roundIdx + 1][i / 2].player2 = winners[i + 1] || null;
+      }
+      try {
+        const data = await updateTournamentOnBackend(t.id, { matches: updatedMatches }, token);
+        setTournaments(ts => ts.map(tt => tt.id === t.id ? data.tournament : tt));
+      } catch (err) {
+        alert("Failed to advance winners");
+      }
+    };
+
+    // Calculate standings automatically
+    const points = {};
+    [t.created_by, ...invited].forEach(id => { points[id] = 0; });
+
+    matches.forEach(round => {
+      round.forEach(m => {
+        if (m.score1 != null && m.score2 != null) {
+          if (m.score1 > m.score2) {
+            points[m.player1] += 3; // Win = 3 pts
+          } else if (m.score2 > m.score1) {
+            points[m.player2] += 3;
+          } else {
+            points[m.player1] += 1; // Draw = 1 pt each
+            points[m.player2] += 1;
+          }
+        }
+      });
+    });
+
+    const maxPoints = Math.max(...Object.values(points));
+    const winners = Object.entries(points)
+      .filter(([id, pts]) => pts === maxPoints && maxPoints > 0)
+      .map(([id]) => getUserName(Number(id)));
+
     return (
       <div style={styles.card}>
         <h2>{t.name} - Matches</h2>
-        {t.matches && t.matches.map((round, roundIdx) => (
+        {matches.map((round, roundIdx) => (
           <div key={roundIdx} style={{ marginBottom: 18 }}>
             <h4>Round {roundIdx + 1}</h4>
             {round.map((m, idx) => (
               <div key={idx} style={{ marginBottom: 8 }}>
-                <span>{m.player1} vs {m.player2}</span>
+                <span>{getUserName(m.player1)} vs {getUserName(m.player2)}</span>
                 <input
                   type="number"
                   min={0}
                   value={m.score1 ?? ""}
-                  onChange={e => {
-                    let score = e.target.value === "" ? null : Number(e.target.value);
-                    if (score < 0) score = 0;
-                    setTournaments(ts => {
-                      const copy = [...ts];
-                      copy[view.index].matches[roundIdx][idx].score1 = score;
-                      return copy;
-                    });
-                  }}
+                  onChange={e => handleScoreChange(roundIdx, idx, "score1", e.target.value)}
                   style={{ width: 40, margin: "0 8px" }}
                   placeholder="P1"
                 />
@@ -158,61 +284,62 @@ const TournamentsHome = () => {
                   type="number"
                   min={0}
                   value={m.score2 ?? ""}
-                  onChange={e => {
-                    let score = e.target.value === "" ? null : Number(e.target.value);
-                    if (score < 0) score = 0;
-                    setTournaments(ts => {
-                      const copy = [...ts];
-                      copy[view.index].matches[roundIdx][idx].score2 = score;
-                      return copy;
-                    });
-                  }}
+                  onChange={e => handleScoreChange(roundIdx, idx, "score2", e.target.value)}
                   style={{ width: 40, margin: "0 8px" }}
                   placeholder="P2"
                 />
               </div>
             ))}
-            {t.type === "Elimination" && roundIdx < t.matches.length - 1 && (
+            {t.type === "Elimination" && roundIdx < matches.length - 1 && (
               <button
                 style={{ marginTop: 8, marginBottom: 8 }}
-                onClick={() => {
-                  setTournaments(ts => {
-                    const copy = [...ts];
-                    const winners = round
-                      .map(m => {
-                        if (m.score1 == null || m.score2 == null) return null;
-                        if (m.score1 > m.score2) return m.player1;
-                        if (m.score2 > m.score1) return m.player2;
-                        return null;
-                      })
-                      .filter(Boolean);
-                    for (let i = 0; i < winners.length; i += 2) {
-                      copy[view.index].matches[roundIdx + 1][i / 2].player1 = winners[i] || null;
-                      copy[view.index].matches[roundIdx + 1][i / 2].player2 = winners[i + 1] || null;
-                    }
-                    return copy;
-                  });
-                }}
+                onClick={() => handleAdvanceWinners(roundIdx)}
               >
                 Avansează câștigătorii în runda următoare
               </button>
             )}
           </div>
         ))}
-        {t.type === "Championship" && (
+        {["Championship", "Elimination"].includes(t.type) && (
           <>
-            <h3>Standings</h3>
+            <h3>Standings (Manual Entry)</h3>
             <ul style={{ textAlign: "left" }}>
-              {Object.entries(standings)
-                .sort((a, b) => b[1] - a[1])
-                .map(([name, pts]) => (
-                  <li key={name}>{name}: {pts} pts</li>
+              {[t.created_by, ...invited].map(id => (
+                <li key={id}>
+                  {getUserName(id)}:{" "}
+                  <input
+                    type="number"
+                    min={0}
+                    value={manualStandings[id] ?? 0}
+                    onChange={e => setManualStandings(ms => ({
+                      ...ms,
+                      [id]: Number(e.target.value)
+                    }))}
+                    style={{ width: 60, marginLeft: 8 }}
+                  /> pts
+                </li>
               ))}
             </ul>
+            <button onClick={handleSavePoints} style={{ marginTop: 12 }}>
+              Save Points
+            </button>
           </>
         )}
         {t.type === "Elimination" && winner && (
-          <h3>Winner: {winner}</h3>
+          <h3>Winner: {getUserName(winner)}</h3>
+        )}
+        <h3>Standings (Auto Calculated)</h3>
+        <ul style={{ textAlign: "left" }}>
+          {[t.created_by, ...invited].map(id => (
+            <li key={id}>
+              {getUserName(id)}: {points[id]} pts
+            </li>
+          ))}
+        </ul>
+        {maxPoints > 0 && winners.length > 0 && (
+          <div style={{ marginTop: 16, fontWeight: "bold", fontSize: "1.2rem" }}>
+            Winner{winners.length > 1 ? "s" : ""}: {winners.join(", ")}
+          </div>
         )}
         <button onClick={() => setView("list")} style={styles.backButton}>Back</button>
       </div>
@@ -239,90 +366,6 @@ const TournamentsHome = () => {
     </div>
   );
 };
-
-function generateMatches(players, type) {
-  if (!players || players.length < 2) return [];
-  if (type === "Championship") {
-    // Round-robin pe runde, tur-retur
-    let rounds = [];
-    let ps = [...players];
-    if (ps.length % 2 !== 0) ps.push(null);
-    const numRounds = (ps.length - 1) * 2; // tur + retur
-    const half = ps.length / 2;
-
-    // Tur
-    let arr = [...ps];
-    for (let round = 0; round < ps.length - 1; round++) {
-      let matches = [];
-      for (let i = 0; i < half; i++) {
-        const p1 = arr[i];
-        const p2 = arr[ps.length - 1 - i];
-        if (p1 && p2) {
-          matches.push({
-            player1: p1,
-            player2: p2,
-            score1: null,
-            score2: null,
-          });
-        }
-      }
-      rounds.push(matches);
-      arr.splice(1, 0, arr.pop());
-    }
-    // Retur (inversează gazda cu oaspetele)
-    arr = [...ps];
-    for (let round = 0; round < ps.length - 1; round++) {
-      let matches = [];
-      for (let i = 0; i < half; i++) {
-        const p1 = arr[ps.length - 1 - i];
-        const p2 = arr[i];
-        if (p1 && p2) {
-          matches.push({
-            player1: p1,
-            player2: p2,
-            score1: null,
-            score2: null,
-          });
-        }
-      }
-      rounds.push(matches);
-      arr.splice(1, 0, arr.pop());
-    }
-    return rounds;
-  }
-  if (type === "Elimination") {
-    // Single elimination bracket
-    let rounds = [];
-    let ps = [...players];
-    if (ps.length % 2 !== 0) ps.push(null);
-    let currentRound = ps.map((p, i) => i % 2 === 0 ? [p, ps[i + 1]] : null).filter(Boolean);
-    let roundMatches = currentRound.map(([p1, p2]) => ({
-      player1: p1,
-      player2: p2,
-      score1: null,
-      score2: null,
-    }));
-    rounds.push(roundMatches);
-
-    // Generate next rounds (empty, to be filled as winners are decided)
-    let numPlayers = ps.length;
-    while (numPlayers > 2) {
-      numPlayers = Math.ceil(numPlayers / 2);
-      let nextRound = [];
-      for (let i = 0; i < numPlayers / 2; i++) {
-        nextRound.push({
-          player1: null,
-          player2: null,
-          score1: null,
-          score2: null,
-        });
-      }
-      rounds.push(nextRound);
-    }
-    return rounds;
-  }
-  return [];
-}
 
 const styles = {
   container: {

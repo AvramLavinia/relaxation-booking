@@ -1,33 +1,82 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { API_URL } from "../api/auth";
 
 const Tournaments = ({ onConfirm, onCancel }) => {
   const [step, setStep] = useState(1);
   const [selectedGame, setSelectedGame] = useState("");
   const [playerCount, setPlayerCount] = useState(2);
   const [tournamentType, setTournamentType] = useState("");
-  const [invitedPlayers, setInvitedPlayers] = useState([]);
   const [tournamentName, setTournamentName] = useState("");
+  const [players, setPlayers] = useState([]);
+  const [invitedPlayers, setInvitedPlayers] = useState([]);
 
-  const players = [
-    "Ana", "Bogdan", "Cristi", "Diana", "Ema",
-    "Florin", "Gina", "Horia", "Ionut", "Jeni"
-  ];
+  // Get current user from localStorage
+  const currentUser = JSON.parse(localStorage.getItem("user") || "{}");
 
-  const toggleInvite = (name) => {
+  useEffect(() => {
+    if (step === 4) {
+      fetch(`${API_URL}/users`, {
+        headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
+      })
+        .then(res => res.json())
+        .then(data => setPlayers(data.users || []));
+    }
+  }, [step]);
+
+  const toggleInvite = (id) => {
     setInvitedPlayers((prev) =>
-      prev.includes(name)
-        ? prev.filter((p) => p !== name)
-        : [...prev, name]
+      prev.includes(id)
+        ? prev.filter((p) => p !== id)
+        : [...prev, id]
     );
   };
 
+  // Add this function inside your component, before handleConfirm:
+  function generateChampionshipMatches(playerIds) {
+    const matches = [];
+    for (let i = 0; i < playerIds.length; i++) {
+      for (let j = i + 1; j < playerIds.length; j++) {
+        matches.push({
+          player1: playerIds[i],
+          player2: playerIds[j],
+          score1: null,
+          score2: null
+        });
+      }
+    }
+    return [matches]; // single round with all matches
+  }
+
+  function generateEliminationMatches(playerIds) {
+    // Shuffle players for random pairing
+    const shuffled = [...playerIds].sort(() => Math.random() - 0.5);
+    const matches = [];
+    for (let i = 0; i < shuffled.length; i += 2) {
+      matches.push({
+        player1: shuffled[i],
+        player2: shuffled[i + 1] || null, // If odd number, last gets a bye
+        score1: null,
+        score2: null
+      });
+    }
+    return [matches]; // Only first round; next rounds are generated as winners advance
+  }
+
   const handleConfirm = () => {
+    const allPlayers = [currentUser.id, ...invitedPlayers];
+    let matches = [];
+    if (tournamentType === "Championship") {
+      matches = generateChampionshipMatches(allPlayers);
+    } else if (tournamentType === "Elimination") {
+      matches = generateEliminationMatches(allPlayers);
+    }
     const newTournament = {
       name: tournamentName,
       game: selectedGame,
       players: playerCount,
       type: tournamentType,
-      invited: invitedPlayers
+      invited: invitedPlayers,
+      matches
     };
     onConfirm(newTournament);
   };
@@ -125,23 +174,40 @@ const Tournaments = ({ onConfirm, onCancel }) => {
         {step === 4 && (
           <>
             <h2>Invite Players</h2>
+            <div style={{ marginBottom: "1rem", color: "#888" }}>
+              Please select exactly {playerCount - 1} teammate{playerCount - 1 !== 1 ? "s" : ""}.
+            </div>
             <ul style={{ listStyle: "none", padding: 0 }}>
-              {players.map((name) => (
-                <li key={name}>
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={invitedPlayers.includes(name)}
-                      onChange={() => toggleInvite(name)}
-                    />{" "}
-                    {name}
-                  </label>
-                </li>
-              ))}
+              {players
+                .filter(user => user.id !== currentUser.id)
+                .map((user) => (
+                  <li key={user.id}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={invitedPlayers.includes(user.id)}
+                        onChange={() => toggleInvite(user.id)}
+                      />{" "}
+                      {user.display_name || user.email}
+                    </label>
+                  </li>
+                ))}
             </ul>
+            <div style={{ color: "red", margin: "0.5rem 0" }}>
+              {invitedPlayers.length !== playerCount - 1 &&
+                `You must select exactly ${playerCount - 1} teammate${playerCount - 1 !== 1 ? "s" : ""}.`}
+            </div>
             <div style={styles.nav}>
               <button onClick={() => setStep(3)} style={styles.backButton}>Back</button>
-              <button onClick={handleConfirm} style={styles.nextButton}>
+              <button
+                onClick={handleConfirm}
+                style={{
+                  ...styles.nextButton,
+                  backgroundColor: invitedPlayers.length === playerCount - 1 ? "#007bff" : "#ccc",
+                  cursor: invitedPlayers.length === playerCount - 1 ? "pointer" : "not-allowed"
+                }}
+                disabled={invitedPlayers.length !== playerCount - 1}
+              >
                 Confirm
               </button>
               <button onClick={onCancel} style={styles.backButton}>Cancel</button>

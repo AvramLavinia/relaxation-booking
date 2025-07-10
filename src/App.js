@@ -7,6 +7,7 @@ import LoginForm from "./auth/login";
 import ResetPasswordForm from "./auth/form";
 import logo from "./assets/endava_logo.png";
 import TournamentsHome from "./components/TournamentsHome";
+import MyInvitations from "./components/MyInvitations";
 
 function AppRoutes({ user, setUser }) {
   const [showBookings, setShowBookings] = useState(false);
@@ -339,6 +340,7 @@ function AppRoutes({ user, setUser }) {
         <Route path="/tournaments" element={<TournamentsHome />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
+      <MyInvitations /> {/* <-- Add this so the popup is always available */}
     </>
   );
 }
