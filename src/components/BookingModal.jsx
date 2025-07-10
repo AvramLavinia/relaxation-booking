@@ -17,8 +17,13 @@ export default function BookingModal({ facility, onClose, user }) {
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
  
-  const isToday = date === todayStr;
- 
+  // Helper to check if selected date is today
+  const isToday =
+    date &&
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!date) {
@@ -29,22 +34,18 @@ export default function BookingModal({ facility, onClose, user }) {
     const mm = String(date.getMonth() + 1).padStart(2, "0");
     const dd = String(date.getDate()).padStart(2, "0");
     const dateStr = `${yyyy}-${mm}-${dd}`;
-    const startDateTime = new Date(`${dateStr}T${hour}:${minute}`);
-    if (startDateTime <= new Date()) {
+    const startDateTimeLocal = new Date(`${dateStr}T${hour}:${minute}`);
+    if (startDateTimeLocal <= new Date()) {
       alert("Please select a future time.");
       return;
     }
-    try {
-      await bookFacility({
-        facilitySlug: facility.slug,
-        start: `${dateStr}T${hour}:${minute}`,
-        durationMin: Number(duration),
-      });
-      alert(`Booked ${facility.name} for ${user.email} on ${dd}-${mm}-${yyyy} at ${hour}:${minute}`);
-      onClose();
-    } catch (err) {
-      alert("Facility is occupied during that interval. Please choose another time.");
-    }
+    await bookFacility({
+      facilitySlug: facility.slug,
+      start: `${dateStr}T${hour}:${minute}`, // send local time string
+      durationMin: Number(duration),
+    });
+    alert(`Booked ${facility.name} for ${user.email} on ${dd}-${mm}-${yyyy} at ${hour}:${minute}`);
+    onClose();
   };
  
 
@@ -58,21 +59,19 @@ export default function BookingModal({ facility, onClose, user }) {
       setLoadingSlots(true);
       try {
         const bookings = await fetchActiveBookings();
-        // Only consider bookings for this facility and selected date
         const yyyy = date.getFullYear();
         const mm = String(date.getMonth() + 1).padStart(2, "0");
         const dd = String(date.getDate()).padStart(2, "0");
         const dateStr = `${yyyy}-${mm}-${dd}`;
-        // The backend returns: { id, facility_id, user_id, start_time, end_time, status, user_email, facility_slug }
-        // Use facility_slug and start_time/end_time
         const slots = bookings
           .filter(b => b.facility_slug === facility.slug && b.start_time.startsWith(dateStr))
           .map(b => {
-            const start = new Date(b.start_time);
-            const end = new Date(b.end_time);
-            return { start, end };
+            const start = new Date(b.start_time); // This is local if no 'Z'
+const end = new Date(b.end_time);
+            return { start, end, user_email: b.user_email };
           });
         setBusySlots(slots);
+        console.log("Busy slots for", facility.slug, dateStr, slots);
       } catch (e) {
         setBusySlots([]);
       }
@@ -94,44 +93,111 @@ export default function BookingModal({ facility, onClose, user }) {
     );
   }
 
-  // Only allow hours/minutes that are not busy
+  // Build a map of reserved hours to reservation info for the selected date
+  const reservedHourMap = {};
+  busySlots.forEach(({ start, end, user_email }) => {
+    const hour = String(start.getHours()).padStart(2, "0");
+    // Extract just the name before @endava.com
+    let name = user_email;
+    if (user_email && user_email.endsWith("@endava.com")) {
+      name = user_email.split("@")[0];
+    }
+    reservedHourMap[hour] = name;
+  });
+
+  // Generate hour options: all hours from 08 to 22, but skip past hours if today
   const hourOptions = Array.from({ length: 15 }, (_, i) => {
     const h = String(i + 8).padStart(2, "0");
-    let available = false;
+    if (isToday && Number(h) < currentHour) return null;
+
+    // Check if there is a busy slot that fully occupies this hour
+    const yyyy = date?.getFullYear();
+    const mm = String(date?.getMonth() + 1).padStart(2, "0");
+    const dd = String(date?.getDate()).padStart(2, "0");
+    if (!date) return null;
+    const hourStart = new Date(`${yyyy}-${mm}-${dd}T${h}:00`);
+    const hourEnd = new Date(hourStart.getTime() + 60 * 60000);
+
+    // Hide hour if any busy slot fully occupies this hour
+    const fullyOccupied = busySlots.some(({ start, end }) =>
+      start.getTime() <= hourStart.getTime() &&
+      end.getTime() >= hourEnd.getTime()
+    );
+    if (fullyOccupied) return null;
+
+    // Check if ALL minute options for this hour are disabled
+    let allMinutesDisabled = true;
     for (let m = 0; m < 60; m += 5) {
-      if (!isSlotBusy(h, String(m).padStart(2, "0"))) {
-        available = true;
+      const value = String(m).padStart(2, "0");
+      const slotStart = new Date(`${yyyy}-${mm}-${dd}T${h}:${value}`);
+      const slotEnd = new Date(slotStart.getTime() + Number(duration) * 60000);
+      const busy = busySlots.find(({ start, end }) =>
+        slotStart < end && slotEnd > start
+      );
+      if (
+        (!isToday || Number(h) > currentHour || (Number(h) === currentHour && Number(value) > currentMinute)) &&
+        !busy
+      ) {
+        allMinutesDisabled = false;
         break;
       }
     }
-    return available ? { value: h, label: h } : null;
+
+    return {
+      value: h,
+      label: h,
+      isDisabled: allMinutesDisabled
+    };
   }).filter(Boolean);
 
   const minuteOptions = Array.from({ length: 12 }, (_, i) => {
     const value = String(i * 5).padStart(2, "0");
+    let reservedBy = null;
+    let isDisabled = false;
+    if (date && hour) {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const slotStart = new Date(`${yyyy}-${mm}-${dd}T${hour}:${value}`);
+      const slotEnd = new Date(slotStart.getTime() + Number(duration) * 60000);
+
+      // Disable if this interval overlaps with any busy slot
+      const busy = busySlots.find(({ start, end, user_email }) =>
+        slotStart < end && slotEnd > start
+      );
+      if (busy) {
+        reservedBy = busy.user_email;
+        if (reservedBy && reservedBy.endsWith("@endava.com")) {
+          reservedBy = reservedBy.split("@")[0];
+        }
+        isDisabled = true;
+      }
+    }
     return {
       value,
-      label: value,
+      label: reservedBy ? `${value} (${reservedBy})` : value,
+      isDisabled
     };
   }).filter(opt => {
-    if (!isToday || Number(hour) > currentHour || (Number(hour) === currentHour && Number(opt.value) > currentMinute)) {
-      return !isSlotBusy(hour, opt.value);
-    }
+    if (!isToday) return true;
+    if (Number(hour) > currentHour) return true;
+    if (Number(hour) === currentHour) return Number(opt.value) > currentMinute;
     return false;
   });
 
-  // Auto-select first available hour/minute if current is not available
+  // Auto-select first available hour if current is not available
   useEffect(() => {
     if (!hourOptions.find(opt => opt.value === hour) && hourOptions.length > 0) {
       setHour(hourOptions[0].value);
     }
-  }, [hourOptions]);
+  }, [hourOptions, duration]);
 
+  // Auto-select first available minute if current is not available
   useEffect(() => {
     if (!minuteOptions.find(opt => opt.value === minute) && minuteOptions.length > 0) {
       setMinute(minuteOptions[0].value);
     }
-  }, [minuteOptions]);
+  }, [minuteOptions, duration, hour]);
 
   return (
     <div
@@ -225,6 +291,7 @@ export default function BookingModal({ facility, onClose, user }) {
                     value={hourOptions.find(opt => opt.value === hour)}
                     onChange={opt => setHour(opt.value)}
                     options={hourOptions}
+                    isOptionDisabled={opt => opt.isDisabled}
                     menuPlacement="auto"
                     menuPosition="fixed"
                     isLoading={loadingSlots}
@@ -271,6 +338,11 @@ export default function BookingModal({ facility, onClose, user }) {
                   />
                 </div>
               </div>
+              {minuteOptions.length === 0 && (
+                <div style={{ color: "#b91c1c", marginTop: 8 }}>
+                  No available minutes for this hour and duration.
+                </div>
+              )}
             </div>
             <div>
               <label style={{ fontWeight: 500, marginBottom: 6, display: "block" }}>Duration:</label>
@@ -301,6 +373,7 @@ export default function BookingModal({ facility, onClose, user }) {
             }}>
               <button
                 type="submit"
+                disabled={minuteOptions.length === 0 || hourOptions.length === 0}
                 style={{
                   flex: 1,
                   padding: "1rem 0",
@@ -310,7 +383,7 @@ export default function BookingModal({ facility, onClose, user }) {
                   borderRadius: "16px",
                   fontWeight: 700,
                   fontSize: "1.4rem",
-                  cursor: "pointer",
+                  cursor: minuteOptions.length === 0 || hourOptions.length === 0 ? "not-allowed" : "pointer",
                   boxShadow: "0 2px 8px rgba(125,223,195,0.10)",
                   transition: "background 0.2s"
                 }}
