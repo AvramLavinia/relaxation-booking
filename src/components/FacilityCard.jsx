@@ -3,18 +3,18 @@ import { iconMap } from "./iconMap";
  
 // Card background colors (corrected slug keys)
 const bgColorMap = {
-  fussball: "#fed7d7",
-  chair: "#d1fae5",
-  "ping-pong": "#ffe0c7",  // updated slug without dashes
-  ps5: "#ddd6fe",
+  fussball: "#fff",        // white
+  chair: "#f5f7fa",        // light gray
+  "ping-pong": "#ffa23a",  // orange
+  ps5: "#1a237e",          // navy
 };
  
 // Button background colors
 const buttonColorMap = {
-  fussball: "#fda4af",
-  chair: "#06b6d4",
-  "ping-pong": "#fb923c",  // updated slug without dashes
-  ps5: "#7c3aed",
+  fussball: "#ffa23a",     // orange
+  chair: "#1a237e",        // navy
+  "ping-pong": "#ffa23a",  // orange
+  ps5: "#1a237e",          // navy
 };
  
 export default function FacilityCard({ facility, onBook }) {
@@ -86,4 +86,3 @@ export default function FacilityCard({ facility, onBook }) {
     </div>
   );
 }
- 

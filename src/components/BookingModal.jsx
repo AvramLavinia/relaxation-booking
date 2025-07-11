@@ -1,22 +1,171 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import Select from "react-select";
-import { bookFacility } from "../api/bookings";
- 
+import { bookFacility, fetchActiveBookings } from "../api/bookings";
+
 export default function BookingModal({ facility, onClose, user }) {
   const [date, setDate] = useState(null);
   const [hour, setHour] = useState(() => String(new Date().getHours()).padStart(2, "0"));
   const [minute, setMinute] = useState(() => String(new Date().getMinutes()).padStart(2, "0"));
   const [duration, setDuration] = useState(60);
- 
+  const [busySlots, setBusySlots] = useState([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
+
   const now = new Date();
   const todayStr = now.toISOString().split("T")[0];
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
- 
-  const isToday = date === todayStr;
- 
+
+  const isToday = date && date.toISOString().split("T")[0] === todayStr;
+
+  // Fetch busy slots when facility or date changes
+  useEffect(() => {
+    async function fetchBusy() {
+      if (!facility || !date) {
+        setBusySlots([]);
+        return;
+      }
+      setLoadingSlots(true);
+      try {
+        const bookings = await fetchActiveBookings();
+        const yyyy = date.getFullYear();
+        const mm = String(date.getMonth() + 1).padStart(2, "0");
+        const dd = String(date.getDate()).padStart(2, "0");
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const slots = bookings
+          .filter(b => b.facility_slug === facility.slug && b.start_time.startsWith(dateStr))
+          .map(b => {
+            const start = new Date(b.start_time);
+            const end = new Date(b.end_time);
+            return { start, end, user_email: b.user_email };
+          });
+        setBusySlots(slots);
+      } catch (e) {
+        setBusySlots([]);
+      }
+      setLoadingSlots(false);
+    }
+    fetchBusy();
+  }, [facility, date]);
+
+  // Helper to check if a slot is busy
+  function isSlotBusy(h, m) {
+    if (!date) return false;
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const dd = String(date.getDate()).padStart(2, "0");
+    const slotStart = new Date(`${yyyy}-${mm}-${dd}T${h}:${m}`);
+    const slotEnd = new Date(slotStart.getTime() + Number(duration) * 60000);
+    return busySlots.some(({ start, end }) =>
+      slotStart < end && slotEnd > start
+    );
+  }
+
+  // Build a map of reserved hours to reservation info for the selected date
+  const reservedHourMap = {};
+  busySlots.forEach(({ start, end, user_email }) => {
+    const hour = String(start.getHours()).padStart(2, "0");
+    let name = user_email;
+    if (user_email && user_email.endsWith("@endava.com")) {
+      name = user_email.split("@")[0];
+    }
+    reservedHourMap[hour] = name;
+  });
+
+  // Generate hour options: all hours from 08 to 22, but skip past hours if today
+  const hourOptions = Array.from({ length: 15 }, (_, i) => {
+    const h = String(i + 8).padStart(2, "0");
+    if (isToday && Number(h) < currentHour) return null;
+
+    // Hide hour if any busy slot fully occupies this hour
+    const yyyy = date?.getFullYear();
+    const mm = String(date?.getMonth() + 1).padStart(2, "0");
+    const dd = String(date?.getDate()).padStart(2, "0");
+    if (!date) return null;
+    const hourStart = new Date(`${yyyy}-${mm}-${dd}T${h}:00`);
+    const hourEnd = new Date(hourStart.getTime() + 60 * 60000);
+
+    const fullyOccupied = busySlots.some(({ start, end }) =>
+      start.getTime() <= hourStart.getTime() &&
+      end.getTime() >= hourEnd.getTime()
+    );
+    if (fullyOccupied) return null;
+
+    // Check if ALL minute options for this hour are disabled
+    let allMinutesDisabled = true;
+    for (let m = 0; m < 60; m += 5) {
+      const value = String(m).padStart(2, "0");
+      const slotStart = new Date(`${yyyy}-${mm}-${dd}T${h}:${value}`);
+      const slotEnd = new Date(slotStart.getTime() + Number(duration) * 60000);
+      const busy = busySlots.find(({ start, end }) =>
+        slotStart < end && slotEnd > start
+      );
+      if (
+        (!isToday || Number(h) > currentHour || (Number(h) === currentHour && Number(value) > currentMinute)) &&
+        !busy
+      ) {
+        allMinutesDisabled = false;
+        break;
+      }
+    }
+
+    return {
+      value: h,
+      label: h,
+      isDisabled: allMinutesDisabled
+    };
+  }).filter(Boolean);
+
+  const minuteOptions = Array.from({ length: 12 }, (_, i) => {
+    const value = String(i * 5).padStart(2, "0");
+    let reservedBy = null;
+    let isDisabled = false;
+    if (date && hour) {
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const slotStart = new Date(`${yyyy}-${mm}-${dd}T${hour}:${value}`);
+      const slotEnd = new Date(slotStart.getTime() + Number(duration) * 60000);
+
+      // Disable if this interval overlaps with any busy slot
+      const busy = busySlots.find(({ start, end, user_email }) =>
+        slotStart < end && slotEnd > start
+      );
+      if (busy) {
+        reservedBy = busy.user_email;
+        if (reservedBy && reservedBy.endsWith("@endava.com")) {
+          reservedBy = reservedBy.split("@")[0];
+        }
+        isDisabled = true;
+      }
+    }
+    return {
+      value,
+      label: reservedBy ? `${value} (${reservedBy})` : value,
+      isDisabled
+    };
+  }).filter(opt => {
+    if (!isToday) return true;
+    if (Number(hour) > currentHour) return true;
+    if (Number(hour) === currentHour) return Number(opt.value) > currentMinute;
+    return false;
+  });
+
+  // Auto-select first available hour if current is not available
+  useEffect(() => {
+    if (!hourOptions.find(opt => opt.value === hour) && hourOptions.length > 0) {
+      setHour(hourOptions[0].value);
+    }
+  }, [hourOptions, duration]);
+
+  // Auto-select first available minute if current is not available
+  useEffect(() => {
+    if (!minuteOptions.find(opt => opt.value === minute) && minuteOptions.length > 0) {
+      setMinute(minuteOptions[0].value);
+    }
+  }, [minuteOptions, duration, hour]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!date) {
@@ -27,34 +176,20 @@ export default function BookingModal({ facility, onClose, user }) {
     const mm = String(date.getMonth() + 1).padStart(2, "0");
     const dd = String(date.getDate()).padStart(2, "0");
     const dateStr = `${yyyy}-${mm}-${dd}`;
-    const startDateTime = new Date(`${dateStr}T${hour}:${minute}`);
-    if (startDateTime <= new Date()) {
+    const startDateTimeLocal = new Date(`${dateStr}T${hour}:${minute}`);
+    if (startDateTimeLocal <= new Date()) {
       alert("Please select a future time.");
       return;
     }
-    try {
-      await bookFacility({
-        facilitySlug: facility.slug,
-        start: `${dateStr}T${hour}:${minute}`,
-        durationMin: Number(duration),
-      });
-      alert(`Booked ${facility.name} for ${user.email} on ${dd}-${mm}-${yyyy} at ${hour}:${minute}`);
-      onClose();
-    } catch (err) {
-      alert("Booking failed!");
-    }
+    await bookFacility({
+      facilitySlug: facility.slug,
+      start: `${dateStr}T${hour}:${minute}`,
+      durationMin: Number(duration),
+    });
+    alert(`Booked ${facility.name} for ${user.email} on ${dd}-${mm}-${yyyy} at ${hour}:${minute}`);
+    onClose();
   };
- 
-  const hourOptions = Array.from({ length: 15 }, (_, i) => ({
-    value: String(i + 8).padStart(2, "0"),
-    label: String(i + 8).padStart(2, "0"),
-  }));
- 
-  const minuteOptions = Array.from({ length: 60 }, (_, i) => ({
-    value: String(i).padStart(2, "0"),
-    label: String(i).padStart(2, "0"),
-  })).filter(opt => !isToday || Number(hour) > currentHour || (Number(hour) === currentHour && Number(opt.value) > currentMinute));
- 
+
   return (
     <div
       style={{
@@ -69,7 +204,7 @@ export default function BookingModal({ facility, onClose, user }) {
         justifyContent: "center",
         zIndex: 1000,
       }}
-      onClick={onClose} // <-- close when clicking overlay
+      onClick={onClose}
     >
       <div
         style={{
@@ -84,7 +219,7 @@ export default function BookingModal({ facility, onClose, user }) {
           flexDirection: "column",
           alignItems: "stretch"
         }}
-        onClick={e => e.stopPropagation()} // <-- prevent close when clicking inside modal
+        onClick={e => e.stopPropagation()}
       >
         <div style={{
           background: "#f9fafb",
@@ -147,8 +282,12 @@ export default function BookingModal({ facility, onClose, user }) {
                     value={hourOptions.find(opt => opt.value === hour)}
                     onChange={opt => setHour(opt.value)}
                     options={hourOptions}
+                    isOptionDisabled={opt => opt.isDisabled}
                     menuPlacement="auto"
                     menuPosition="fixed"
+                    isLoading={loadingSlots}
+                    isDisabled={loadingSlots || hourOptions.length === 0}
+                    placeholder={loadingSlots ? "Loading..." : hourOptions.length === 0 ? "No hours" : undefined}
                     styles={{
                       control: provided => ({
                         ...provided,
@@ -171,6 +310,9 @@ export default function BookingModal({ facility, onClose, user }) {
                     options={minuteOptions}
                     menuPlacement="auto"
                     menuPosition="fixed"
+                    isLoading={loadingSlots}
+                    isDisabled={loadingSlots || minuteOptions.length === 0}
+                    placeholder={loadingSlots ? "Loading..." : minuteOptions.length === 0 ? "No minutes" : undefined}
                     styles={{
                       control: provided => ({
                         ...provided,
@@ -187,6 +329,11 @@ export default function BookingModal({ facility, onClose, user }) {
                   />
                 </div>
               </div>
+              {minuteOptions.length === 0 && (
+                <div style={{ color: "#b91c1c", marginTop: 8 }}>
+                  No available minutes for this hour and duration.
+                </div>
+              )}
             </div>
             <div>
               <label style={{ fontWeight: 500, marginBottom: 6, display: "block" }}>Duration:</label>
@@ -216,6 +363,7 @@ export default function BookingModal({ facility, onClose, user }) {
             }}>
               <button
                 type="submit"
+                disabled={minuteOptions.length === 0 || hourOptions.length === 0}
                 style={{
                   flex: 1,
                   padding: "1rem 0",
@@ -225,7 +373,7 @@ export default function BookingModal({ facility, onClose, user }) {
                   borderRadius: "16px",
                   fontWeight: 700,
                   fontSize: "1.4rem",
-                  cursor: "pointer",
+                  cursor: minuteOptions.length === 0 || hourOptions.length === 0 ? "not-allowed" : "pointer",
                   boxShadow: "0 2px 8px rgba(125,223,195,0.10)",
                   transition: "background 0.2s"
                 }}
@@ -238,7 +386,7 @@ export default function BookingModal({ facility, onClose, user }) {
                 style={{
                   flex: 1,
                   padding: "1rem 0",
-                  backgroundColor: "#fb7185", // soft red
+                  backgroundColor: "#fb7185",
                   color: "#fff",
                   border: "none",
                   borderRadius: "16px",
@@ -258,5 +406,4 @@ export default function BookingModal({ facility, onClose, user }) {
     </div>
   );
 }
- 
- 
+
