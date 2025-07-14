@@ -242,13 +242,13 @@ function AppRoutes({ user, setUser }) {
                       padding: "12px",
                       borderRadius: "8px",
                       border: "none",
-                      backgroundColor: "#ffa23a",
+                      backgroundColor: "#ff6600", // portocaliu Endava
                       color: "#fff",
                       cursor: "pointer",
                       marginRight: "12px",
                       fontWeight: "bold",
                       fontSize: "1.1rem",
-                      boxShadow: "0 2px 8px rgba(44,62,80,0.08)",
+                      boxShadow: "0 2px 8px rgba(255,102,0,0.10)",
                       transition: "background 0.2s"
                     }}
                     onClick={handleShowBookings}
@@ -261,7 +261,7 @@ function AppRoutes({ user, setUser }) {
                       padding: "12px",
                       borderRadius: "8px",
                       border: "none",
-                      backgroundColor: "#1a237e",
+                      backgroundColor: "#1a2238", // bleumarin Endava
                       color: "#fff",
                       cursor: "pointer",
                       marginLeft: "12px",

@@ -38,7 +38,7 @@ function BookingCalendar({ onDateSelect, reservations = [] }) {
               width: 8,
               height: 8,
               borderRadius: "50%",
-              background: "#ff4c4c",
+              background: "#ff6600",
               margin: "0 auto",
               marginTop: 2,
             }}
@@ -49,28 +49,29 @@ function BookingCalendar({ onDateSelect, reservations = [] }) {
     return null;
   }
 
-  // Get bookings for selected date
-  let selectedDateStr = null;
-  let dayBookings = [];
-  if (selectedDate) {
-    const yyyy = selectedDate.getFullYear();
-    const mm = String(selectedDate.getMonth() + 1).padStart(2, "0");
-    const dd = String(selectedDate.getDate()).padStart(2, "0");
-    selectedDateStr = `${yyyy}-${mm}-${dd}`;
-    dayBookings = bookingsByDate[selectedDateStr] || [];
-  }
-
   return (
     <div
       style={{
         padding: 24,
         background: "#fff",
+        border: "2.5px solid #ff6600",
         borderRadius: "18px",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+        boxShadow: "0 4px 16px rgba(255,102,0,0.06)",
         minWidth: 320,
+        maxWidth: 400,
+        margin: "0 auto",
       }}
     >
-      <h3 style={{ textAlign: "center", marginBottom: 16 }}>
+      <h3
+        style={{
+          textAlign: "center",
+          marginBottom: 16,
+          color: "#1a2238",
+          fontWeight: 700,
+          fontSize: "1.3rem",
+          letterSpacing: "0.5px",
+        }}
+      >
         Reservations Calendar
       </h3>
       <Calendar
@@ -79,6 +80,10 @@ function BookingCalendar({ onDateSelect, reservations = [] }) {
           if (onDateSelect) onDateSelect(date);
         }}
         tileContent={tileContent}
+        calendarType="iso8601"
+        prev2Label={null}
+        next2Label={null}
+        className="endava-calendar"
       />
     </div>
   );

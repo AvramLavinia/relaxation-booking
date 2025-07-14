@@ -33,18 +33,44 @@ const Tournaments = ({ onConfirm, onCancel }) => {
 
   // Add this function inside your component, before handleConfirm:
   function generateChampionshipMatches(playerIds) {
-    const matches = [];
-    for (let i = 0; i < playerIds.length; i++) {
-      for (let j = i + 1; j < playerIds.length; j++) {
-        matches.push({
-          player1: playerIds[i],
-          player2: playerIds[j],
-          score1: null,
-          score2: null
-        });
+    const n = playerIds.length;
+    let players = [...playerIds];
+    if (n % 2 !== 0) players.push(null); // Adaugă "bye" dacă e impar
+
+    const numRounds = players.length - 1;
+    const half = players.length / 2;
+    const rounds = [];
+
+    // Tur
+    for (let round = 0; round < numRounds; round++) {
+      const matches = [];
+      for (let i = 0; i < half; i++) {
+        const p1 = players[i];
+        const p2 = players[players.length - 1 - i];
+        if (p1 != null && p2 != null) {
+          matches.push({
+            player1: p1,
+            player2: p2,
+            score1: null,
+            score2: null
+          });
+        }
       }
+      rounds.push(matches);
+      // Rotește jucătorii, cu excepția primului
+      players = [players[0], ...players.slice(-1), ...players.slice(1, -1)];
     }
-    return [matches]; // single round with all matches
+
+    // Retur (inversează player1/player2)
+    const returnRounds = rounds.map(round =>
+      round.map(match => ({
+        player1: match.player2,
+        player2: match.player1,
+        score1: null,
+        score2: null
+      }))
+    );
+    return [...rounds, ...returnRounds];
   }
 
   function generateEliminationMatches(playerIds) {
@@ -86,19 +112,13 @@ const Tournaments = ({ onConfirm, onCancel }) => {
       <div style={styles.card}>
         {step === 1 && (
           <>
-            <h2>Choose the game</h2>
+            <h2 style={styles.title}>Choose the game</h2>
             <input
               type="text"
               placeholder="Tournament name"
               value={tournamentName}
               onChange={e => setTournamentName(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "0.75rem",
-                marginBottom: "1rem",
-                borderRadius: "8px",
-                border: "1px solid #ccc"
-              }}
+              style={styles.input}
             />
             {["Ping Pong", "Fussball", "FIFA (PS5)"].map((game) => (
               <button
@@ -127,7 +147,7 @@ const Tournaments = ({ onConfirm, onCancel }) => {
 
         {step === 2 && (
           <>
-            <h2>Number of players</h2>
+            <h2 style={styles.title}>Number of players</h2>
             <div style={styles.counter}>
               <button onClick={() => setPlayerCount(Math.max(2, playerCount - 1))}>−</button>
               <span style={styles.count}>{playerCount}</span>
@@ -142,7 +162,7 @@ const Tournaments = ({ onConfirm, onCancel }) => {
 
         {step === 3 && (
           <>
-            <h2>Choose tournament type</h2>
+            <h2 style={styles.title}>Choose tournament type</h2>
             {["Championship", "Elimination"].map((type) => (
               <button
                 key={type}
@@ -173,7 +193,7 @@ const Tournaments = ({ onConfirm, onCancel }) => {
 
         {step === 4 && (
           <>
-            <h2>Invite Players</h2>
+            <h2 style={styles.title}>Invite Players</h2>
             <div style={{ marginBottom: "1rem", color: "#888" }}>
               Please select exactly {playerCount - 1} teammate{playerCount - 1 !== 1 ? "s" : ""}.
             </div>
@@ -221,7 +241,7 @@ const Tournaments = ({ onConfirm, onCancel }) => {
 
 const styles = {
   container: {
-    height: "100vh",
+    minHeight: "100vh",
     backgroundColor: "#f5f7fa",
     display: "flex",
     justifyContent: "center",
@@ -229,40 +249,79 @@ const styles = {
   },
   card: {
     background: "#fff",
-    padding: "2rem",
-    borderRadius: "12px",
-    width: "400px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-    textAlign: "center"
+    padding: "2.5rem 2rem",
+    borderRadius: "22px",
+    width: "420px",
+    boxShadow: "0 8px 32px rgba(34,34,59,0.10)",
+    textAlign: "center",
+    fontFamily: "'Poppins', 'Segoe UI', Arial, sans-serif",
+    border: "3px solid #ff6600"
+  },
+  title: {
+    fontWeight: 700,
+    color: "#1a2238",
+    marginBottom: "2rem",
+    fontSize: "2rem"
+  },
+  input: {
+    width: "90%",
+    padding: "0.9rem 1rem",
+    borderRadius: "10px",
+    border: "2px solid #ff6600",
+    fontSize: "1.1rem",
+    marginBottom: "1.5rem",
+    outline: "none",
+    background: "#f5f7fa",
+    textAlign: "center",
+    margin: "0 auto 1.5rem auto" // <-- centrează inputul
   },
   optionButton: {
     display: "block",
     width: "100%",
-    margin: "0.5rem 0",
-    padding: "0.75rem",
-    borderRadius: "8px",
-    border: "2px solid #ccc",
+    margin: "0.7rem 0",
+    padding: "1.1rem",
+    fontSize: "1.1rem",
+    borderRadius: "10px",
+    border: "2px solid #ff6600",
+    background: "#fff",
+    color: "#1a2238",
+    fontWeight: 600,
     cursor: "pointer",
-    background: "white"
+    transition: "background 0.2s, color 0.2s, border 0.2s"
+  },
+  optionButtonSelected: {
+    background: "#ff6600",
+    color: "#fff",
+    border: "2px solid #ff6600"
   },
   nextButton: {
-    marginTop: "1.5rem",
+    marginTop: "2rem",
     width: "100%",
-    padding: "0.75rem",
+    padding: "1rem",
     border: "none",
-    borderRadius: "8px",
-    color: "white",
+    borderRadius: "10px",
+    color: "#fff",
     fontWeight: "bold",
-    fontSize: "1rem",
-    backgroundColor: "#007bff",
-    cursor: "pointer"
+    fontSize: "1.1rem",
+    backgroundColor: "#ff6600",
+    cursor: "pointer",
+    opacity: 1,
+    transition: "background 0.2s, opacity 0.2s"
+  },
+  nextButtonDisabled: {
+    backgroundColor: "#e5e7eb",
+    color: "#bdbdbd",
+    cursor: "not-allowed",
+    opacity: 0.7
   },
   backButton: {
-    marginTop: "1rem",
-    padding: "0.5rem 1rem",
-    borderRadius: "6px",
-    backgroundColor: "#ddd",
-    border: "none",
+    marginTop: "1.5rem",
+    padding: "0.7rem 1.5rem",
+    borderRadius: "8px",
+    backgroundColor: "#fff",
+    border: "2px solid #ff6600",
+    color: "#ff6600",
+    fontWeight: 600,
     cursor: "pointer"
   },
   counter: {

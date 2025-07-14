@@ -15,11 +15,13 @@ export default function Facilities({ user, bookings }) {
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
+        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
         gap: "1.5rem",
         width: "100%",
-        maxWidth: "500px",
+        maxWidth: "100%",
         justifyItems: "center",
+        alignItems: "center",
+        margin: "0 auto",
         marginBottom: "1.2rem",
       }}
     >

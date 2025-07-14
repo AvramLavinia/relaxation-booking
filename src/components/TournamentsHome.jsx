@@ -15,6 +15,47 @@ async function updateTournamentOnBackend(id, update, token) {
   return resp.json();
 }
 
+function generateChampionshipMatches(playerIds) {
+  const n = playerIds.length;
+  let players = [...playerIds];
+  if (n % 2 !== 0) players.push(null); // Add a bye if odd number
+
+  const numRounds = players.length - 1;
+  const half = players.length / 2;
+  const rounds = [];
+
+  // Tur
+  for (let round = 0; round < numRounds; round++) {
+    const matches = [];
+    for (let i = 0; i < half; i++) {
+      const p1 = players[i];
+      const p2 = players[players.length - 1 - i];
+      if (p1 != null && p2 != null) {
+        matches.push({
+          player1: p1,
+          player2: p2,
+          score1: null,
+          score2: null
+        });
+      }
+    }
+    rounds.push(matches);
+    // Rotate players except the first
+    players = [players[0], ...players.slice(-1), ...players.slice(1, -1)];
+  }
+
+  // Retur (inversează player1/player2)
+  const returnRounds = rounds.map(round =>
+    round.map(match => ({
+      player1: match.player2,
+      player2: match.player1,
+      score1: null,
+      score2: null
+    }))
+  );
+  return [...rounds, ...returnRounds];
+}
+
 const TournamentsHome = () => {
   const [view, setView] = useState("home");
   const [tournaments, setTournaments] = useState([]);
@@ -93,71 +134,74 @@ const TournamentsHome = () => {
 
   if (view === "create") {
     return (
-      <Tournaments
-        onConfirm={handleAddTournament}
-        onCancel={() => setView("home")}
-      />
+      <div style={styles.centeredContainer}>
+        <div style={styles.card}>
+          <Tournaments
+            onConfirm={handleAddTournament}
+            onCancel={() => setView("home")}
+          />
+        </div>
+      </div>
     );
   }
 
   if (view === "list") {
     return (
-      <div style={styles.card}>
-        <h2>Existing Tournaments</h2>
-        {tournaments.map((t) => (
-          <div key={t.id} style={styles.item}>
-            <strong>{t.name}</strong> <br />
-            Game: {t.game} <br />
-            Players: {t.players} <br />
-            Type: {t.type}
-            <button
-              style={{
-                marginLeft: "1rem",
-                background: "#007bff",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                padding: "0.3rem 0.7rem",
-                cursor: "pointer"
-              }}
-              onClick={() => setView({ type: "manage", id: t.id })}
-            >
-              Manage
-            </button>
-            {t.created_by === currentUser.id && (
-              <button
-                style={{
-                  marginLeft: "1rem",
-                  background: "#ff4c4c",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "6px",
-                  padding: "0.3rem 0.7rem",
-                  cursor: "pointer"
-                }}
-                onClick={() => handleDeleteTournament(t.id)}
-              >
-                Delete
-              </button>
-            )}
-          </div>
-        ))}
-        {inviteMessage && (
-          <div style={{
-            background: "#d1fae5",
-            color: "#065f46",
-            padding: "1rem",
-            borderRadius: "8px",
-            margin: "1rem 0",
-            textAlign: "center",
-            fontWeight: "bold"
-          }}>
-            {inviteMessage}
-          </div>
-        )}
-        <button onClick={() => setView("home")} style={styles.backButton}>
-          Back
-        </button>
+      <div style={styles.centeredContainer}>
+        <div style={styles.card}>
+          <h2 style={{ fontWeight: 700, color: "#22223b", marginBottom: "1.5rem" }}>
+            Existing Tournaments
+          </h2>
+          {tournaments.length === 0 && (
+            <div style={{ color: "#888", marginBottom: "1.5rem" }}>
+              No tournaments created yet.
+            </div>
+          )}
+          {tournaments.map((t) => (
+            <div key={t.id} style={styles.item}>
+              <div style={{ fontWeight: 600, fontSize: "1.1rem", marginBottom: 4 }}>
+                {t.name}
+              </div>
+              <div style={{ fontSize: "0.97rem", color: "#444" }}>
+                <span style={{ marginRight: 12 }}>🎮 <b>Game:</b> {t.game}</span>
+                <span style={{ marginRight: 12 }}>👥 <b>Players:</b> {t.players}</span>
+                <span>🏆 <b>Type:</b> {t.type}</span>
+              </div>
+              <div style={{ marginTop: 10 }}>
+                <button
+                  style={styles.manageButton}
+                  onClick={() => setView({ type: "manage", id: t.id })}
+                >
+                  Manage
+                </button>
+                {t.created_by === currentUser.id && (
+                  <button
+                    style={styles.deleteButton}
+                    onClick={() => handleDeleteTournament(t.id)}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+          {inviteMessage && (
+            <div style={{
+              background: "#d1fae5",
+              color: "#065f46",
+              padding: "1rem",
+              borderRadius: "8px",
+              margin: "1rem 0",
+              textAlign: "center",
+              fontWeight: "bold"
+            }}>
+              {inviteMessage}
+            </div>
+          )}
+          <button onClick={() => setView("home")} style={styles.backButton}>
+            Back
+          </button>
+        </div>
       </div>
     );
   }
@@ -258,90 +302,195 @@ const TournamentsHome = () => {
       });
     });
 
+    // Calculează golaverajul pentru fiecare jucător
+    const goalDiffs = {};
+    [t.created_by, ...invited].forEach(id => { goalDiffs[id] = 0; });
+
+    matches.forEach(round => {
+      round.forEach(m => {
+        if (m.score1 != null && m.score2 != null) {
+          goalDiffs[m.player1] += Number(m.score1) - Number(m.score2);
+          goalDiffs[m.player2] += Number(m.score2) - Number(m.score1);
+        }
+      });
+    });
+
     const maxPoints = Math.max(...Object.values(points));
     const winners = Object.entries(points)
       .filter(([id, pts]) => pts === maxPoints && maxPoints > 0)
       .map(([id]) => getUserName(Number(id)));
 
     return (
-      <div style={styles.card}>
-        <h2>{t.name} - Matches</h2>
-        {matches.map((round, roundIdx) => (
-          <div key={roundIdx} style={{ marginBottom: 18 }}>
-            <h4>Round {roundIdx + 1}</h4>
-            {round.map((m, idx) => (
-              <div key={idx} style={{ marginBottom: 8 }}>
-                <span>{getUserName(m.player1)} vs {getUserName(m.player2)}</span>
-                <input
-                  type="number"
-                  min={0}
-                  value={m.score1 ?? ""}
-                  onChange={e => handleScoreChange(roundIdx, idx, "score1", e.target.value)}
-                  style={{ width: 40, margin: "0 8px" }}
-                  placeholder="P1"
-                />
-                <input
-                  type="number"
-                  min={0}
-                  value={m.score2 ?? ""}
-                  onChange={e => handleScoreChange(roundIdx, idx, "score2", e.target.value)}
-                  style={{ width: 40, margin: "0 8px" }}
-                  placeholder="P2"
-                />
-              </div>
-            ))}
-            {t.type === "Elimination" && roundIdx < matches.length - 1 && (
-              <button
-                style={{ marginTop: 8, marginBottom: 8 }}
-                onClick={() => handleAdvanceWinners(roundIdx)}
-              >
-                Avansează câștigătorii în runda următoare
-              </button>
-            )}
-          </div>
-        ))}
-        {["Championship", "Elimination"].includes(t.type) && (
-          <>
-            <h3>Standings (Manual Entry)</h3>
-            <ul style={{ textAlign: "left" }}>
-              {[t.created_by, ...invited].map(id => (
-                <li key={id}>
-                  {getUserName(id)}:{" "}
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#f5f7fa"
+      }}>
+        <div style={{
+          background: "#fff",
+          padding: "2.5rem 2rem",
+          borderRadius: "22px",
+          width: "650px",
+          boxShadow: "0 8px 32px rgba(34,34,59,0.10)",
+          textAlign: "center",
+          fontFamily: "'Poppins', 'Segoe UI', Arial, sans-serif",
+          border: "3px solid #ff6600"
+        }}>
+          <h2 style={{ color: "#ff6600", fontWeight: 700, marginBottom: 24 }}>{t.name} - Matches</h2>
+          {matches.map((round, roundIdx) => (
+            <div key={roundIdx} style={{
+              marginBottom: 24,
+              background: "#f5f7fa",
+              borderRadius: "12px",
+              padding: "1.2rem 1.5rem",
+              border: "1.5px solid #ff6600",
+              boxShadow: "0 2px 8px rgba(255,102,0,0.06)"
+            }}>
+              <h4 style={{ color: "#1a2238", fontWeight: 600, marginBottom: 12 }}>
+                {t.type === "Elimination"
+                  ? `Etapa ${matches.length === 4 ? ["Sferturi", "Semifinale", "Finala", "Castigator"][roundIdx] || `Runda ${roundIdx + 1}` : `Runda ${roundIdx + 1}`}`
+                  : `Round ${roundIdx + 1}`}
+              </h4>
+              {round.map((m, idx) => (
+                <div key={idx} style={{
+                  marginBottom: 10,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 12
+                }}>
+                  <span style={{ fontWeight: 600, color: "#1a2238" }}>
+                    {getUserName(m.player1)}
+                  </span>
                   <input
                     type="number"
                     min={0}
-                    value={manualStandings[id] ?? 0}
-                    onChange={e => setManualStandings(ms => ({
-                      ...ms,
-                      [id]: Number(e.target.value)
-                    }))}
-                    style={{ width: 60, marginLeft: 8 }}
-                  /> pts
-                </li>
+                    value={m.score1 ?? ""}
+                    onChange={e => handleScoreChange(roundIdx, idx, "score1", e.target.value)}
+                    style={{
+                      width: 40,
+                      margin: "0 4px",
+                      borderRadius: "6px",
+                      border: "2px solid #ff6600",
+                      textAlign: "center",
+                      fontWeight: 700,
+                      color: "#ff6600"
+                    }}
+                    placeholder="P1"
+                  />
+                  <span style={{ fontWeight: 700, color: "#22223b" }}>vs</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={m.score2 ?? ""}
+                    onChange={e => handleScoreChange(roundIdx, idx, "score2", e.target.value)}
+                    style={{
+                      width: 40,
+                      margin: "0 4px",
+                      borderRadius: "6px",
+                      border: "2px solid #ff6600",
+                      textAlign: "center",
+                      fontWeight: 700,
+                      color: "#ff6600"
+                    }}
+                    placeholder="P2"
+                  />
+                  <span style={{ fontWeight: 600, color: "#1a2238" }}>
+                    {getUserName(m.player2)}
+                  </span>
+                </div>
               ))}
-            </ul>
-            <button onClick={handleSavePoints} style={{ marginTop: 12 }}>
-              Save Points
-            </button>
-          </>
-        )}
-        {t.type === "Elimination" && winner && (
-          <h3>Winner: {getUserName(winner)}</h3>
-        )}
-        <h3>Standings (Auto Calculated)</h3>
-        <ul style={{ textAlign: "left" }}>
-          {[t.created_by, ...invited].map(id => (
-            <li key={id}>
-              {getUserName(id)}: {points[id]} pts
-            </li>
+              {t.type === "Elimination" && roundIdx < matches.length - 1 && (
+                <button
+                  style={{
+                    marginTop: 8,
+                    marginBottom: 8,
+                    background: "#ff6600",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "8px",
+                    padding: "0.5rem 1.2rem",
+                    fontWeight: 600,
+                    cursor: "pointer"
+                  }}
+                  onClick={() => handleAdvanceWinners(roundIdx)}
+                >
+                  Avansează câștigătorii în runda următoare
+                </button>
+              )}
+            </div>
           ))}
-        </ul>
-        {maxPoints > 0 && winners.length > 0 && (
-          <div style={{ marginTop: 16, fontWeight: "bold", fontSize: "1.2rem" }}>
-            Winner{winners.length > 1 ? "s" : ""}: {winners.join(", ")}
-          </div>
-        )}
-        <button onClick={() => setView("list")} style={styles.backButton}>Back</button>
+
+          {/* Standings doar la Championship */}
+          {t.type === "Championship" && (
+            <>
+              <h3 style={{ color: "#ff6600", fontWeight: 700, marginTop: 32, marginBottom: 12 }}>
+                Standings
+              </h3>
+              <table style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                background: "#f5f7fa",
+                borderRadius: "10px",
+                overflow: "hidden",
+                marginBottom: 16
+              }}>
+                <thead>
+                  <tr style={{ background: "#1a2238", color: "#fff" }}>
+                    <th style={{ padding: "0.7rem" }}>#</th>
+                    <th style={{ padding: "0.7rem" }}>Player</th>
+                    <th style={{ padding: "0.7rem" }}>Points</th>
+                    <th style={{ padding: "0.7rem" }}>Golaveraj</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[t.created_by, ...invited]
+                    .map(id => ({ id, pts: points[id], gd: goalDiffs[id] }))
+                    .sort((a, b) => b.pts - a.pts || b.gd - a.gd)
+                    .map((entry, idx) => (
+                      <tr key={entry.id} style={{ borderBottom: "1px solid #ff6600" }}>
+                        <td style={{ padding: "0.7rem", fontWeight: 700, color: "#1a2238", textAlign: "center" }}>{idx + 1}</td>
+                        <td style={{ padding: "0.7rem", fontWeight: 600, color: "#1a2238" }}>{getUserName(entry.id)}</td>
+                        <td style={{ padding: "0.7rem", fontWeight: 700, color: "#ff6600" }}>{entry.pts}</td>
+                        <td style={{ padding: "0.7rem", fontWeight: 700, color: "#1a2238" }}>{entry.gd > 0 ? "+" : ""}{entry.gd}</td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+              {maxPoints > 0 && winners.length > 0 && (
+                <div style={{
+                  marginTop: 16,
+                  fontWeight: "bold",
+                  fontSize: "1.2rem",
+                  color: "#1a2238"
+                }}>
+                  Winner{winners.length > 1 ? "s" : ""}: {winners.join(", ")}
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Winner la eliminatoriu */}
+          {t.type === "Elimination" && winner && (
+            <h3 style={{ color: "#ff6600", fontWeight: 700, marginTop: 32 }}>
+              Winner: {getUserName(winner)}
+            </h3>
+          )}
+          <button onClick={() => setView("list")} style={{
+            marginTop: "2rem",
+            padding: "0.7rem 1.5rem",
+            borderRadius: "8px",
+            backgroundColor: "#fff",
+            border: "2px solid #ff6600",
+            color: "#ff6600",
+            fontWeight: 600,
+            cursor: "pointer"
+          }}>
+            Back
+          </button>
+        </div>
       </div>
     );
   }
@@ -369,7 +518,7 @@ const TournamentsHome = () => {
 
 const styles = {
   container: {
-    height: "100vh",
+    minHeight: "100vh",
     background: "#f5f7fa",
     display: "flex",
     justifyContent: "center",
@@ -377,35 +526,80 @@ const styles = {
   },
   card: {
     background: "#fff",
-    padding: "2rem",
-    borderRadius: "12px",
-    width: "400px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-    textAlign: "center"
+    padding: "3.5rem 2.5rem",
+    borderRadius: "22px",
+    width: "700px",
+    boxShadow: "0 8px 32px rgba(34,34,59,0.10)",
+    textAlign: "center",
+    fontFamily: "'Poppins', 'Segoe UI', Arial, sans-serif",
+    border: "6px solid #ff6600", // portocaliu accent
+    color: "#22223b"
   },
   actionButton: {
     display: "block",
     width: "100%",
-    margin: "1rem 0",
-    padding: "1rem",
-    fontSize: "1rem",
-    borderRadius: "8px",
+    margin: "1.2rem 0",
+    padding: "1.1rem",
+    fontSize: "1.1rem",
+    borderRadius: "10px",
     border: "none",
-    backgroundColor: "#007bff",
-    color: "white",
-    cursor: "pointer"
+    // portocaliu
+      backgroundColor: "#ff6600",
+      color: "#fff",
+      fontWeight: 700,
+      letterSpacing: "0.5px",
+      cursor: "pointer",
+      boxShadow: "0 2px 8px rgba(255,102,0,0.10)",
+      transition: "background 0.2s"
+      },
+      item: {
+      marginBottom: "1.5rem",
+      textAlign: "left",
+      background: "#f5f7fa", // gri deschis
+      borderRadius: "12px",
+      padding: "1.2rem 1.5rem",
+      boxShadow: "0 2px 8px rgba(255,102,0,0.06)",
+      border: "none" // elimină borderul portocaliu
   },
-  item: {
-    marginBottom: "1.5rem",
-    textAlign: "left"
+  manageButton: {
+    marginLeft: "1rem",
+    background: "#1a2238", // bleumarin
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    padding: "0.5rem 1.2rem",
+    fontWeight: 600,
+    cursor: "pointer",
+    boxShadow: "0 1px 4px rgba(26,34,56,0.10)"
+  },
+  deleteButton: {
+    marginLeft: "1rem",
+    background: "#fff",
+    color: "#ff6600",
+    border: "2px solid #ff6600",
+    borderRadius: "8px",
+    padding: "0.5rem 1.2rem",
+    fontWeight: 600,
+    cursor: "pointer",
+    boxShadow: "0 1px 4px rgba(255,102,0,0.10)"
   },
   backButton: {
-    marginTop: "1rem",
-    padding: "0.5rem 1rem",
-    borderRadius: "6px",
-    backgroundColor: "#ddd",
-    border: "none",
+    marginTop: "1.5rem",
+    padding: "0.7rem 1.5rem",
+    borderRadius: "8px",
+    backgroundColor: "#fff",
+    border: "2px solid #ff6600",
+    color: "#ff6600",
+    fontWeight: 600,
     cursor: "pointer"
+  },
+  centeredContainer: {
+    minHeight: "100vh",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    background: "#f5f7fa",
+    paddingTop: 30
   }
 };
 
